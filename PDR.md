@@ -103,6 +103,58 @@ Two-agent system that:
 
 ---
 
+## amex.point.me — Correct Usage Guide
+
+### URL
+https://amex.point.me (NOT www.point.me — the amex subdomain is pre-filtered to Amex MR partners)
+
+### Authentication Requirement
+**The user MUST be logged into their Amex account on amex.point.me for results to load.**
+- If not logged in: search returns empty or redirects
+- Login flow: Amex account credentials (not a point.me account)
+- The browser session must be active — OpenClaw uses profile="user" which has the existing Amex login session
+- If results don't appear: check if login has expired and prompt user to re-authenticate
+
+### Correct Results URL Format
+```
+https://amex.point.me/results?departureIata=LAS&arrivalIata=LHR&departureDate=2026-06-01&classOfService=economy&legType=oneWay&passengers=1
+```
+
+Parameters:
+- `departureIata` — origin airport code (e.g. LAS, LHR, LGW)
+- `arrivalIata` — destination airport code
+- `departureDate` — YYYY-MM-DD format
+- `classOfService` — economy | premium | business | first
+- `legType` — oneWay | roundTrip
+- `passengers` — number of passengers (use 1 for per-person pricing)
+
+### CRITICAL: Pricing Is Per Person, One Way
+**point.me always shows cost per person for one direction.**
+
+To calculate total for a round trip with 2 passengers:
+```
+Total = (outbound_pts_per_person + return_pts_per_person) × number_of_passengers
+Example: (36,000 + 23,000) × 2 = 118,000 points total
+```
+
+**DO NOT** search round trip with 2 passengers — always search one-way, 1 passenger, then do the math.
+
+### Page Load Time
+- Wait 6-8 seconds after navigation before reading results
+- point.me is a React app — results load asynchronously
+- If blank after 8s: scroll down, then wait 3 more seconds
+- If still blank: the session may have expired — report to user
+
+### What point.me Shows
+- Program name (Flying Blue, Virgin Atlantic, etc.)
+- Points cost per person one-way
+- Approximate taxes/fees in USD
+- Number of stops
+- Operating airline
+- Booking link to the loyalty program site
+
+---
+
 ## System Architecture
 
 ```
@@ -121,7 +173,7 @@ Two-agent system that:
                │  Promise.all (parallel)
                │          │
     ┌──────────▼──┐   ┌───▼──────────┐
-    │  Agent A    │   │   Agent B    │
+    │  Agent A    │   │   Agent B    │  ← PARALLEL EXECUTION
     │ Seats.aero  │   │  point.me    │
     │ API sweep   │   │  browser     │
     │ ~30 seconds │   │  ~16-20 min  │
@@ -313,3 +365,68 @@ bestairdeals/
 ---
 
 *Last updated: 2026-04-03 · Author: Q + gstack /plan-eng-review*
+
+---
+
+## Data Schema — For Cross-Referencing
+
+Both agents output records using this shared schema so they can be joined:
+
+```json
+// RECORD — one search result
+{
+  "source": "seats_aero | point_me",
+  "direction": "outbound | return",
+  "origin": "LAS",
+  "destination": "LHR",
+  "date": "2026-06-01",
+  "program": "flyingblue",
+  "airline": "KL",
+  "pts_per_person_ow": 36000,
+  "fees_usd": 168.50,
+  "seats_available": 8,
+  "stops": 1
+}
+
+// COMBO — outbound + return paired
+{
+  "outbound": { /* RECORD */ },
+  "return": { /* RECORD */ },
+  "stay_days": 21,
+  "total_pts_2pax": 118000,
+  "total_fees_usd": 337.00,
+  "score": 151700,
+  "source_tag": "API | Verified | Both | PARTIAL"
+}
+```
+
+**Cross-reference matching key:** `direction + origin + destination + date + program`
+
+---
+
+## Agent Timeout & Load Rules
+
+### Seats.aero API
+- Response is instant JSON — no waiting needed
+- Rate limit: add 500ms between calls if doing many
+- Data freshness: can be up to a few hours old — note this in output
+
+### amex.point.me Browser
+- **Minimum 8 seconds** wait after every navigation before reading results
+- If blank after 8s: scroll down, wait 5 more seconds
+- If blank after 15s: re-navigate to the same URL
+- Never skip a date because it loads slowly — slow = working
+- Amex login session must be active (profile="user" has the session)
+- If login expired: stop and notify user — cannot proceed without auth
+- 2-second delay between requests, retry with 10s backoff on rate limit
+
+---
+
+## Notes for Future Agents
+
+- Always use amex.point.me (NOT www.point.me) — the amex subdomain is pre-filtered to Amex partners
+- Always check that Amex login session is active before starting
+- Always search 1 passenger, one-way — multiply manually for round trip + multiple pax
+- Seats.aero data may be up to a few hours old — point.me is real-time
+- Award space can disappear between search and booking — speed matters
+- Never transfer points until availability is confirmed
