@@ -107,6 +107,58 @@ Two-agent system that:
 
 ---
 
+## amex.point.me — Correct Usage Guide
+
+### URL
+https://amex.point.me (NOT www.point.me — the amex subdomain is pre-filtered to Amex MR partners)
+
+### Authentication Requirement
+**The user MUST be logged into their Amex account on amex.point.me for results to load.**
+- If not logged in: search returns empty or redirects
+- Login flow: Amex account credentials (not a point.me account)
+- The browser session must be active — OpenClaw uses profile="user" which has the existing Amex login session
+- If results don't appear: check if login has expired and prompt user to re-authenticate
+
+### Correct Results URL Format
+```
+https://amex.point.me/results?departureIata=LAS&arrivalIata=LHR&departureDate=2026-06-01&classOfService=economy&legType=oneWay&passengers=1
+```
+
+Parameters:
+- `departureIata` — origin airport code (e.g. LAS, LHR, LGW)
+- `arrivalIata` — destination airport code
+- `departureDate` — YYYY-MM-DD format
+- `classOfService` — economy | premium | business | first
+- `legType` — oneWay | roundTrip
+- `passengers` — number of passengers (use 1 for per-person pricing)
+
+### CRITICAL: Pricing Is Per Person, One Way
+**point.me always shows cost per person for one direction.**
+
+To calculate total for a round trip with 2 passengers:
+```
+Total = (outbound_pts_per_person + return_pts_per_person) × number_of_passengers
+Example: (36,000 + 23,000) × 2 = 118,000 points total
+```
+
+**DO NOT** search round trip with 2 passengers — always search one-way, 1 passenger, then do the math.
+
+### Page Load Time
+- Wait 6-8 seconds after navigation before reading results
+- point.me is a React app — results load asynchronously
+- If blank after 8s: scroll down, then wait 3 more seconds
+- If still blank: the session may have expired — report to user
+
+### What point.me Shows
+- Program name (Flying Blue, Virgin Atlantic, etc.)
+- Points cost per person one-way
+- Approximate taxes/fees in USD
+- Number of stops
+- Operating airline
+- Booking link to the loyalty program site
+
+---
+
 ## System Architecture
 
 ```
@@ -122,17 +174,26 @@ Two-agent system that:
         └──────┬──────────┬───────┘
                │          │
     ┌──────────▼──┐   ┌───▼──────────┐
-    │  Agent A    │   │   Agent B    │
+    │  Agent A    │   │   Agent B    │  ← PARALLEL EXECUTION
     │ Seats.aero  │   │  point.me    │
     │ API sweep   │   │  browser     │
     │ (all progs) │   │  verify top  │
+    │ ~3 min      │   │  10 combos   │
     └──────┬──────┘   └───┬──────────┘
            │              │
         ┌──▼──────────────▼──┐
+        │  Cross-Reference   │  ← NEW STEP
+        │  Agent A vs B      │
+        │  Agree → HIGH ✅   │
+        │  Disagree → ⚠️ LOW │
+        └──────────┬──────────┘
+                   │
+        ┌──────────▼──────────┐
         │   Combo Math Engine │
         │  (OB + RET) × pax  │
         │  Score = pts +      │
         │  (fees × 100)       │
+        │  + Confidence tag   │
         └──────────┬──────────┘
                    │
         ┌──────────▼──────────┐
@@ -142,6 +203,51 @@ Two-agent system that:
         │  • Slack summary    │
         └─────────────────────┘
 ```
+
+---
+
+## The 10-Minute Parallel Sweep — Standard Operating Procedure
+
+Target: Complete a full award search for any route in ~10 minutes with 90%+ confidence.
+
+### Step 1: Agent A — Seats.aero API Sweep (3 min)
+- Query all Amex-compatible program sources simultaneously
+- Cover full date range (all outbound dates, all return dates)
+- Build outbound list + return list
+- Run combo math: (OB pts + RET pts) × pax = total
+- Score = total_pts + (total_fees_usd × 100)
+- Output: Top 20 combos sorted by score
+
+### Step 2: Agent B — amex.point.me Browser Verification (5 min)
+- Take top 10 combos from Agent A
+- Verify each on amex.point.me using the /results URL
+- Confirm: exact pts, exact fees, seats available for needed pax count
+- Capture: booking URL for each verified combo
+- Flag any discrepancies vs Seats.aero data
+
+### Step 3: Cross-Reference + Final Output (2 min)
+- Compare Agent A data vs Agent B data for each combo
+- Where both sources agree → HIGH CONFIDENCE ✅
+- Where sources disagree → show both numbers, note discrepancy
+- Generate final ranked table with confidence scores
+- Post to Google Sheet + Slack summary
+
+### Confidence Scoring
+
+| Source Match | Confidence |
+|---|---|
+| Both sources agree | ✅ HIGH (90%+) |
+| Only Seats.aero | 🟡 MEDIUM (70%) — verify on point.me |
+| Only point.me | 🟡 MEDIUM (75%) — spot-check dates |
+| Sources disagree | ⚠️ LOW — show both, recommend manual check |
+
+### Notes for Future Agents
+- Always use amex.point.me (not www.point.me) — pre-filtered to Amex partners
+- Always check that Amex login session is active before starting
+- Always search 1 passenger, one-way — multiply manually
+- Seats.aero data may be up to a few hours old — point.me is real-time
+- Award space can disappear between search and booking — speed matters
+- Never transfer points until both sources confirm availability
 
 ---
 
