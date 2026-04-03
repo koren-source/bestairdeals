@@ -1,12 +1,12 @@
 # bestairdeals — Product Design Requirements
 
-> Personal award flight intelligence system for Koren. Finds the lowest Amex Membership Rewards points + fees combinations for any trip — in seconds, not hours.
+> Personal award flight intelligence system for Koren. Finds the lowest Amex Membership Rewards points + fees combinations for any trip using two parallel data sources and combo math.
 
 ---
 
 ## Vision
 
-A personal award flight intelligence system for Koren. Uses Seats.aero API + point.me to find the lowest Amex Membership Rewards points + fees combinations for any trip. First user = Koren.
+Find the best award flight redemptions using Amex MR points. Two agents sweep independent data sources in parallel, a combo math engine pairs every outbound with every valid return, scores them, and outputs ranked results to a Google Sheet. First user = Koren. First trip = mom and sister to London.
 
 ---
 
@@ -16,11 +16,11 @@ Finding the best award flight redemption requires:
 
 - Checking 15+ loyalty programs manually
 - Searching dozens of date combinations
-- Calculating outbound + return combos separately (point.me shows one-way pricing)
-- Factoring in fees (some programs like BA/Virgin have $400–600 surcharges)
-- Knowing which programs accept Amex MR transfers
+- Calculating outbound + return combos separately (point.me shows one-way pricing only)
+- Factoring in fees (some programs like BA/Virgin have $400-600 surcharges)
+- Knowing which programs accept Amex MR transfers and at what ratio
 
-This takes hours manually. This system does it in seconds.
+This takes hours manually. This system does it in minutes.
 
 ---
 
@@ -28,11 +28,11 @@ This takes hours manually. This system does it in seconds.
 
 Two-agent system that:
 
-1. Queries Seats.aero API for ALL availability across all Amex MR transfer partners simultaneously
-2. Browses point.me for exact pricing verification on top candidates
-3. Runs combo math (outbound + return × 2 passengers)
-4. Scores by: total points + fee penalty
-5. Outputs ranked results to a personal Vercel dashboard
+1. **Agent A (Seats.aero API):** Sweeps ALL availability across all Amex MR transfer partners simultaneously
+2. **Agent B (point.me browser):** Independently sweeps all dates for real-time Amex pricing
+3. **Combo math engine:** Pairs every valid outbound + return combination for N passengers
+4. **Scoring:** Ranks by total points + fee penalty
+5. **Output:** Google Sheet (CSV fallback) with ranked results
 
 ---
 
@@ -40,25 +40,27 @@ Two-agent system that:
 
 ### Airlines
 
-| Program | Transfer Ratio |
-|---|---|
-| Flying Blue (Air France/KLM) | 1:1 |
-| Virgin Atlantic Flying Club | 1:1 |
-| British Airways Avios | 1:1 |
-| Iberia Avios | 1:1 |
-| Aeroplan (Air Canada) | 1:1 |
-| ANA Mileage Club | 1:1 |
-| Singapore KrisFlyer | 1:1 |
-| Delta SkyMiles | 1:1 |
-| Etihad Guest | 1:1 |
-| Emirates Skywards | 1:1 |
-| Cathay Pacific Asia Miles | 1:1 |
-| Avianca LifeMiles | 1:1 |
-| Hawaiian Miles | 1:1 |
-| JetBlue TrueBlue | 1:0.8 |
-| Copa ConnectMiles | 1:1 |
+| Program | Transfer Ratio | Seats.aero Slug | Notes |
+|---|---|---|---|
+| Flying Blue (Air France/KLM) | 1:1 | `flyingblue` | |
+| Virgin Atlantic Flying Club | 1:1 | `virgin` | |
+| British Airways Avios | 1:1 | `avios` | High fees on some routes |
+| Iberia Avios | 1:1 | — | Shares Avios with BA |
+| Aeroplan (Air Canada) | 1:1 | `aeroplan` | |
+| ANA Mileage Club | 1:1 | `ana` | |
+| Singapore KrisFlyer | 1:1 | `singapore` | |
+| Delta SkyMiles | 1:1 | `delta` | Often high point costs |
+| Etihad Guest | 1:1 | `etihad` | |
+| Emirates Skywards | 1:1 | `emirates` | |
+| Cathay Pacific Asia Miles | 1:1 | — | No Seats.aero slug |
+| Avianca LifeMiles | 1:1 | `lifemiles` | |
+| Hawaiian Miles | 1:1 | — | No Seats.aero slug |
+| JetBlue TrueBlue | 1:0.8 | — | **Non-1:1 ratio: needs MR normalization** |
+| Copa ConnectMiles | 1:1 | — | No Seats.aero slug |
 
-### Hotels (for reference — not included in flight search)
+> **INVESTIGATE:** Programs with non-1:1 transfer ratios (JetBlue 1:0.8) need MR-equivalent normalization in scoring. If Seats.aero returns 80,000 JetBlue points, the actual MR cost is 100,000 (80,000 / 0.8). The `programs.js` config must include the ratio and normalize before scoring.
+
+### Hotels (for reference, not included in flight search)
 
 | Program | Transfer Ratio |
 |---|---|
@@ -73,25 +75,15 @@ Two-agent system that:
 - **Base URL:** `https://seats.aero/partnerapi`
 - **Key endpoint:**
   ```
-  GET /availability?origin_airport=LAS&destination_airport=LHR&cabin=economy&start_date=2026-06-01&end_date=2026-06-30&source=flyingblue
+  GET /availability?origin_airport=LAS&destination_airport=LHR&cabin=economy&start_date=2026-06-01&end_date=2026-07-14&source=flyingblue
   ```
-- **Source param** maps to loyalty program slug (flyingblue, aeroplan, virgin, avios, etc.)
+- **Source param** maps to loyalty program slug
 - **Response fields:** `date`, `YAvailable`, `YMileageCost`, `YTotalTaxes`, `YRemainingSeats`, `YAirlines`
-
-### Program Source Slugs
-
-| Program | Slug |
-|---|---|
-| Flying Blue | `flyingblue` |
-| Aeroplan | `aeroplan` |
-| Virgin Atlantic | `virgin` |
-| British Airways | `avios` |
-| Delta SkyMiles | `delta` |
-| Emirates | `emirates` |
-| Singapore KrisFlyer | `singapore` |
-| Etihad | `etihad` |
-| ANA | `ana` |
-| LifeMiles | `lifemiles` |
+- **Field mapping to internal schema:**
+  - `YMileageCost` → `pts_per_pax`
+  - `YTotalTaxes` → `fees_per_pax`
+  - `YRemainingSeats` → `seats`
+  - `YAirlines` → `airline`
 
 ---
 
@@ -102,8 +94,12 @@ Two-agent system that:
   ```
   https://amex.point.me/results?departureIata=LAS&arrivalIata=LHR&departureDate=2026-06-01&classOfService=economy&legType=oneWay&passengers=1
   ```
-- **Use for:** exact pricing verification, UI confirmation, booking instructions
-- **Browser automation:** via OpenClaw browser tool (`profile="user"`)
+- **Use for:** independent pricing sweep across all dates, booking URLs
+- **Browser automation:** via OpenClaw browser tool (`profile="user"`) on Mac Mini
+- **One search shows all Amex MR partner results for that date**
+- **Throttling:** 2-second delay between requests, retry with 10s backoff on rate limit
+
+> **INVESTIGATE:** point.me may detect and block automation after many sequential searches. Test with a small batch (5-10 searches) first before running the full 91-date sweep. No CAPTCHA handling in v1.
 
 ---
 
@@ -163,156 +159,96 @@ Example: (36,000 + 23,000) × 2 = 118,000 points total
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    USER REQUEST                         │
-│  "Find best flights LAS→London, June-July, 2 pax econ" │
+│                    USER REQUEST                          │
+│  "Find best flights LAS→London, Jun-Jul, 2 pax econ"   │
 └────────────────────┬────────────────────────────────────┘
                      │
         ┌────────────▼────────────┐
-        │     Q (Orchestrator)    │
-        │   Parses: origin, dest, │
+        │     Orchestrator        │
+        │   (search.js)           │
+        │   Parse: origin, dest,  │
         │   dates, pax, cabin     │
         └──────┬──────────┬───────┘
+               │          │
+               │  Promise.all (parallel)
                │          │
     ┌──────────▼──┐   ┌───▼──────────┐
     │  Agent A    │   │   Agent B    │  ← PARALLEL EXECUTION
     │ Seats.aero  │   │  point.me    │
     │ API sweep   │   │  browser     │
-    │ (all progs) │   │  verify top  │
-    │ ~3 min      │   │  10 combos   │
+    │ ~30 seconds │   │  ~16-20 min  │
+    │ All programs│   │  All dates   │
+    │ All dates   │   │  One-way     │
     └──────┬──────┘   └───┬──────────┘
            │              │
         ┌──▼──────────────▼──┐
-        │  Cross-Reference   │  ← NEW STEP
-        │  Agent A vs B      │
-        │  Agree → HIGH ✅   │
-        │  Disagree → ⚠️ LOW │
+        │   Merge + Dedup    │
+        │ point.me wins on   │
+        │ duplicates         │
+        │ [API] [Verified]   │
+        │ [Both] [PARTIAL]   │
+        └──────────┬─────────┘
+                   │
+        ┌──────────▼──────────┐
+        │   COMBO MATH        │
+        │                     │
+        │  For each outbound: │
+        │   For each return   │
+        │    where trip =     │
+        │    18-21 days AND   │
+        │    seats >= pax:    │
+        │    total_pts =      │
+        │    (O+R) × pax     │
+        │    total_fees =     │
+        │    (O+R) × pax     │
+        │    score = pts +    │
+        │    (fees × 100)     │
+        │                     │
+        │  Sort by score ASC  │
         └──────────┬──────────┘
                    │
         ┌──────────▼──────────┐
-        │   Combo Math Engine │
-        │  (OB + RET) × pax  │
-        │  Score = pts +      │
-        │  (fees × 100)       │
-        │  + Confidence tag   │
-        └──────────┬──────────┘
-                   │
-        ┌──────────▼──────────┐
-        │   Output Layer      │
-        │  • Google Sheet     │
-        │  • Vercel Dashboard │
-        │  • Slack summary    │
+        │   Google Sheet      │
+        │   (CSV fallback)    │
+        │   Top combos ranked │
+        │   Shareable link    │
         └─────────────────────┘
 ```
 
 ---
 
-## The 10-Minute Parallel Sweep — Standard Operating Procedure
+## Dual-Source Architecture
 
-Target: Complete a full award search for any route in ~10 minutes with 90%+ confidence.
-
-### Step 1: Agent A — Seats.aero API Sweep (3 min)
-- Query all Amex-compatible program sources simultaneously
-- Cover full date range (all outbound dates, all return dates)
-- Build outbound list + return list
-- Run combo math: (OB pts + RET pts) × pax = total
-- Score = total_pts + (total_fees_usd × 100)
-- Output: Top 20 combos sorted by score
-
-### Step 2: Agent B — amex.point.me Browser Verification (5 min)
-- Take top 10 combos from Agent A
-- Verify each on amex.point.me using the /results URL
-- Confirm: exact pts, exact fees, seats available for needed pax count
-- Capture: booking URL for each verified combo
-- Flag any discrepancies vs Seats.aero data
-
-### Step 3: Cross-Reference + Final Output (2 min)
-- Compare Agent A data vs Agent B data for each combo
-- Where both sources agree → HIGH CONFIDENCE ✅
-- Where sources disagree → show both numbers, note discrepancy
-- Generate final ranked table with confidence scores
-- Post to Google Sheet + Slack summary
-
-### Confidence Scoring
-
-| Source Match | Confidence |
-|---|---|
-| Both sources agree | ✅ HIGH (90%+) |
-| Only Seats.aero | 🟡 MEDIUM (70%) — verify on point.me |
-| Only point.me | 🟡 MEDIUM (75%) — spot-check dates |
-| Sources disagree | ⚠️ LOW — show both, recommend manual check |
-
-### Notes for Future Agents
-- Always use amex.point.me (not www.point.me) — pre-filtered to Amex partners
-- Always check that Amex login session is active before starting
-- Always search 1 passenger, one-way — multiply manually
-- Seats.aero data may be up to a few hours old — point.me is real-time
-- Award space can disappear between search and booking — speed matters
-- Never transfer points until both sources confirm availability
-
----
-
-## Dual-Source Truth Architecture
-
-This is a core design principle. Two independent sources of truth working in sequence — breadth first, then precision.
+Both agents run independently in parallel. This is NOT sequential (Agent A then Agent B). Both sweep their full date ranges simultaneously.
 
 ```
 SEATS.AERO (Agent A)          AMEX.POINT.ME (Agent B)
 ━━━━━━━━━━━━━━━━━━━━          ━━━━━━━━━━━━━━━━━━━━━━━
-• API — no browser needed     • Browser automation
-• All dates in 1 call         • Real-time Amex pricing
-• ~3 second response          • 6-8s per search
-• ~30 programs at once        • Amex partners only
+• API, no browser needed      • Browser automation
+• 1 call per program          • 1 search per date (all programs)
+• ~3 second response          • 6-8s per search + 2s throttle
+• 10 programs queried         • Shows all Amex partners per search
 • May lag by hours            • Always current
 • No booking instructions     • Has booking flow + URL
 ↓                             ↓
-BROAD SWEEP (all options)     VERIFY + CONFIRM (top picks)
+BROAD SWEEP                   INDEPENDENT SWEEP
+(all programs × all dates)    (all dates × all programs)
 ```
 
-### What each source provides
+### Merge rules
 
-**Seats.aero (Agent A):**
-- Broad availability sweep across all Amex MR transfer partners simultaneously
-- Fast: all programs × all dates in a single API call per program (~3s each)
-- Returns: which dates have seats, approximate points cost, fees, seats remaining, operating airlines
-- Limitation: data may lag by a few hours; fees can occasionally differ from live pricing
+When both agents find the same flight (same route, date, program):
+- **point.me price wins** (real-time, authoritative for Amex pricing)
+- Result tagged `[Both]`
+- Seats.aero-only results tagged `[API]`
+- point.me-only results tagged `[Verified]`
+- Partial agent failure results tagged `[PARTIAL]`
 
-**amex.point.me (Agent B):**
-- Exact, real-time pricing as Amex actually sees it — the authoritative source for transfer partner rates
-- Browser-based: requires automation, 6–8s per search
-- Returns: confirmed pts/fees for exact pax count, 2-pax availability check, actual booking URL and step-by-step booking instructions
-- Limitation: too slow to sweep 60+ dates × 15 programs = 900 searches; must be targeted
+### Error handling
 
-### How they work together
-
-```
-Step 1 — Agent A (Seats.aero API)
-  └─ Sweeps all programs × full date range
-  └─ Scores all combos (outbound × return)
-  └─ Returns: top 20 candidates ranked by score
-         ↓
-Step 2 — Agent B (amex.point.me browser)
-  └─ Verifies top 5 from Agent A
-  └─ Confirms exact pts + fees for 2 pax
-  └─ Checks real-time seat availability
-  └─ Captures booking URL + instructions
-         ↓
-Step 3 — Final Output
-  └─ Seats.aero-sourced + point.me-verified
-  └─ Confidence: 90%+
-  └─ Each result tagged: [API] or [API + Verified]
-```
-
-### Why both matter
-
-| | Seats.aero only | point.me only | Both |
-|---|---|---|---|
-| Speed | ✅ Fast | ❌ Slow (900+ searches) | ✅ Fast sweep + targeted verify |
-| Accuracy | ⚠️ May lag | ✅ Always current | ✅ Confirmed on top picks |
-| Coverage | ✅ All dates/programs | ✅ All Amex partners | ✅ Full coverage |
-| Booking info | ❌ None | ✅ URL + instructions | ✅ On verified results |
-| **Verdict** | Good for discovery | Good for confirmation | **Best of both** |
-
-> **Rule of thumb:** Seats.aero finds the candidates. point.me confirms the winner.
+- Agent A fails: run combo math on Agent B data only
+- Agent B fails or partial: run combo math on whatever data exists, flag `[PARTIAL]`
+- Both fail: error, no output written
 
 ---
 
@@ -322,74 +258,29 @@ Step 3 — Final Output
 Score = (total_points_for_all_pax) + (total_fees_usd × 100)
 ```
 
-**Lower score = better deal.** This weights points and fees roughly equally at ~1¢/point.
+**Lower score = better deal.**
 
-### Score Flags
+The multiplier (100) approximates a ~1 cent-per-point valuation. At 1 cpp, $1 of fees = 100 points of cost. This weights points and fees roughly equally. Adjust multiplier to taste (e.g., 70 for a 0.7 cpp valuation).
+
+### Score Flags (v1)
 
 | Flag | Condition |
 |---|---|
-| ⭐ SWEET SPOT | score < 150,000 |
-| ✅ LOW FEES | total fees < $400 |
-| ⚠️ HIGH FEES | any leg > $300/person |
-| 🔴 AVOID | fees > $500 total (wipes out points value) |
+| HIGH FEES | total_fees > $800 (2 pax round trip) |
+
+v1 keeps flags minimal. Expand with SWEET SPOT, LOW FEES, AVOID flags later.
+
+### Seat Availability Guard
+
+Combos are only generated when `seats >= pax` on BOTH legs. A flight with 1 seat available is excluded when searching for 2 passengers.
 
 ### Example Calculation
 
 > Flying Blue, 2 pax, round trip:
-> - Outbound: 62,000 pts × 2 = 124,000 pts, $337 fees
-> - Return: 62,000 pts × 2 = 124,000 pts, $337 fees
-> - **Score = 248,000 + (674 × 100) = 315,400**
-> - Flag: ⚠️ HIGH FEES (borderline)
-
----
-
-## OpenClaw Skill — Phase 1 (immediate)
-
-**Skill name:** `award-flight-finder`
-
-**Triggers on:**
-- "find best flights with points"
-- "how many points to fly to X"
-- "award flight search"
-- "best Amex redemption for X to Y"
-
-**Skill workflow:**
-1. Extract: origin, destination, date range, pax count, cabin preference
-2. Query Seats.aero for all Amex-compatible programs (parallel calls per source)
-3. Build outbound list + return list
-4. Run combo math + scoring for all (outbound × return) pairs
-5. Sort by score ascending, apply flags
-6. Return top 10 combos with booking instructions
-
-**Output format (per combo):**
-```
-#1 ⭐ Flying Blue — Score: 248,000
-  Outbound: Jun 12 LAS→LHR | 62,000 pts/pax | $168.50 fees | KLM | 6 seats
-  Return:   Jul 3  LHR→LAS | 62,000 pts/pax | $168.50 fees | KLM | 8 seats
-  Total (2 pax): 248,000 pts + $674 fees
-  Book at: https://www.flyingblue.com
-```
-
----
-
-## Vercel Dashboard — Phase 2
-
-**URL:** `bestairdeals.vercel.app` (or subdomain of existing q-dashboard)
-
-### Pages
-
-1. **Search** — Input: origin, destination, date range, pax, cabin → triggers agent sweep
-2. **Results** — Ranked table of all combos, sortable by pts / fees / score
-3. **Saved Searches** — History of previous searches with best results
-4. **Points Balance** — Manual input of Amex MR balance + transfer tracking
-
-### Stack
-
-- **Framework:** Next.js (matches existing q-dashboard)
-- **Deployment:** Vercel
-- **API calls:** Seats.aero via server-side Next.js API routes (keeps API key secure)
-- **Auth:** None needed (personal use)
-- **Storage:** Vercel KV or simple JSON file for saved searches
+> - Outbound: 62,000 pts × 2 = 124,000 pts, $168 fees × 2 = $336
+> - Return: 62,000 pts × 2 = 124,000 pts, $168 fees × 2 = $336
+> - **Total: 248,000 pts + $672 fees**
+> - **Score = 248,000 + (672 × 100) = 315,200**
 
 ---
 
@@ -397,39 +288,48 @@ Score = (total_points_for_all_pax) + (total_fees_usd × 100)
 
 | Field | Value |
 |---|---|
-| Route | LAS → London (LHR/LGW), round trip |
+| Route | LAS → London (**LHR and LGW**), round trip |
 | Cabin | Economy |
 | Passengers | 2 |
-| Outbound window | June 1 – July 31, 2026 |
-| Return | +18–21 days after outbound |
+| Outbound sweep | June 1 - July 14, 2026 |
+| Return sweep | June 19 - August 4, 2026 |
+| Trip length | 18-21 days |
 | Goal | Lowest (points + fees) combined |
 | Budget | 2M+ Amex MR available |
 
+> **Both LHR and LGW must be searched.** Some programs (Norwegian, certain BA routes) operate from Gatwick. Hardcoding LHR only misses potentially better options.
+
 **Initial API test result:**
-> Flying Blue · LAS→LHR · June 1 = **62,000 pts/person + $168.50 fees** · 8 seats available on KLM
+> Flying Blue, LAS→LHR, June 1 = **62,000 pts/person + $168.50 fees**, 8 seats available on KLM
 
 ---
 
 ## Development Phases
 
-### Phase 1 — Now
-- [ ] OpenClaw `award-flight-finder` skill
-- [ ] Seats.aero API wrapper (`api/seats-aero.js`)
-- [ ] Combo math engine
-- [ ] Google Sheet output (via Sheets API)
-- [ ] Slack summary post to #q
+### Phase 1 — Now (3-day build)
 
-### Phase 2 — Next
+Build a runnable Node.js script first. OpenClaw skill wrapper comes after it works.
+
+- [ ] `combo.js` — combo math engine (core value, build + test first)
+- [ ] `score.js` — scoring + flag logic
+- [ ] `seats-aero.js` — Agent A: Seats.aero API client
+- [ ] `pointme.js` — Agent B: point.me browser automation
+- [ ] `search.js` — orchestrator: parse input, run both agents via `Promise.all`, merge/dedup
+- [ ] `programs.js` — Amex MR partner config (slugs, transfer ratios)
+- [ ] `sheets.js` — Google Sheet output (CSV fallback)
+- [ ] Tests: vitest, combo math + score tests day 1, API/browser tests day 2-3
+- [ ] Smoke test day 1: 1 API call, 1 browser nav, 1 output write
+
+### Phase 2 — Later (deferred)
+- [ ] OpenClaw skill wrapper (`SKILL.md`)
 - [ ] Vercel dashboard (Next.js)
-- [ ] Search UI with agent trigger
-- [ ] Results table with sorting/filtering
-- [ ] Deploy to `bestairdeals.vercel.app`
+- [ ] Slack summary
 
-### Phase 3 — Future
+### Phase 3 — Future (deferred)
+- [ ] Price alerts (cron: check daily)
 - [ ] Saved searches with history
-- [ ] Price alerts (cron: check daily, ping Slack if score drops)
 - [ ] Amex MR balance tracking
-- [ ] Multi-trip planner (compare 3+ routes)
+- [ ] Multi-trip planner
 
 ---
 
@@ -437,20 +337,21 @@ Score = (total_points_for_all_pax) + (total_fees_usd × 100)
 
 ```
 bestairdeals/
-├── PDR.md                  ← This document
-├── skill/                  ← OpenClaw AgentSkill (award-flight-finder)
-│   ├── SKILL.md
+├── PDR.md                    ← This document
+├── CLAUDE.md                 ← Project context for AI agents
+├── skill/
 │   └── scripts/
-│       ├── search.js       ← Main search orchestrator
-│       └── score.js        ← Combo math + scoring engine
-├── api/                    ← Seats.aero API wrapper scripts
-│   ├── seats-aero.js       ← API client
-│   └── programs.js         ← Amex MR partner config + slugs
-└── dashboard/              ← Vercel Next.js app (Phase 2)
-    ├── pages/
-    │   ├── index.js        ← Search page
-    │   └── results.js      ← Results page
-    └── package.json
+│       ├── search.js         ← Orchestrator: parse input, dispatch agents, merge/dedup
+│       ├── seats-aero.js     ← Agent A: Seats.aero API client
+│       ├── pointme.js        ← Agent B: point.me browser automation
+│       ├── combo.js          ← Combo math: builds all valid (outbound × return) pairs
+│       ├── score.js          ← Scoring: computes score + applies flags
+│       ├── sheets.js         ← Google Sheets output writer (CSV fallback)
+│       └── programs.js       ← Amex MR partner config (slugs, ratios, names)
+├── test/                     ← vitest tests
+│   ├── combo.test.js
+│   └── score.test.js
+└── output/                   ← CSV fallback output directory
 ```
 
 ---
@@ -460,40 +361,10 @@ bestairdeals/
 - [Seats.aero Partner API docs](https://seats.aero/docs)
 - [point.me (Amex-filtered)](https://amex.point.me)
 - [Amex MR transfer partners official list](https://www.americanexpress.com/en-us/rewards/membership-rewards/partners/airline/)
-- [Existing Q dashboard](https://github.com/koren-source/q-dashboard) — Next.js reference
 
 ---
 
-*Last updated: 2026-04-03 · Author: Q*
-
----
-
-## ARCHITECTURE CORRECTION — v2 (Parallel Independent Sweeps)
-
-> Updated based on design review. Previous version incorrectly described Agent B as "verifying top 10 from Agent A." The correct design is full independent parallel sweeps.
-
-### Correct Flow
-
-```
-AGENT A — Seats.aero API          AGENT B — amex.point.me browser
-━━━━━━━━━━━━━━━━━━━━━━━━━         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Full sweep: every outbound date    Full sweep: every outbound date
-Full sweep: every return date      Full sweep: every return date
-All programs simultaneously        All Amex programs via UI
-Combo math → ranked list           Combo math → ranked list
-↓                                  ↓
-DATASET A (structured JSON)        DATASET B (structured JSON)
-                    ↓
-          CROSS-REFERENCE ENGINE
-     Match on: route + date + program
-     Where both agree → HIGH CONFIDENCE ✅
-     Where only one found it → MEDIUM 🟡
-     Where prices differ >10% → DISCREPANCY ⚠️
-                    ↓
-            FINAL OUTPUT (ranked + confidence-scored)
-```
-
-**Key rule: Agent A does NOT feed Agent B. They run in parallel and collect independently. Cross-reference happens at the end.**
+*Last updated: 2026-04-03 · Author: Q + gstack /plan-eng-review*
 
 ---
 
@@ -514,8 +385,7 @@ Both agents output records using this shared schema so they can be joined:
   "pts_per_person_ow": 36000,
   "fees_usd": 168.50,
   "seats_available": 8,
-  "stops": 1,
-  "confidence": "high | medium | low"
+  "stops": 1
 }
 
 // COMBO — outbound + return paired
@@ -523,12 +393,10 @@ Both agents output records using this shared schema so they can be joined:
   "outbound": { /* RECORD */ },
   "return": { /* RECORD */ },
   "stay_days": 21,
-  "total_pts_2pax": 118000,   // = (OB_pts + RET_pts) × 2 passengers
+  "total_pts_2pax": 118000,
   "total_fees_usd": 337.00,
-  "score": 151700,             // = total_pts + (total_fees × 100)
-  "a_confirmed": true,         // Seats.aero found this
-  "b_confirmed": true,         // point.me found this
-  "confidence": "high"         // high = both confirmed, medium = one source
+  "score": 151700,
+  "source_tag": "API | Verified | Both | PARTIAL"
 }
 ```
 
@@ -538,11 +406,9 @@ Both agents output records using this shared schema so they can be joined:
 
 ## Agent Timeout & Load Rules
 
-**No hard timeouts on agents — award searches take as long as they take.**
-
 ### Seats.aero API
 - Response is instant JSON — no waiting needed
-- Rate limit: be respectful, add 500ms between calls if doing many
+- Rate limit: add 500ms between calls if doing many
 - Data freshness: can be up to a few hours old — note this in output
 
 ### amex.point.me Browser
@@ -552,20 +418,15 @@ Both agents output records using this shared schema so they can be joined:
 - Never skip a date because it loads slowly — slow = working
 - Amex login session must be active (profile="user" has the session)
 - If login expired: stop and notify user — cannot proceed without auth
-- Do not time out the browser agent — let it run until all dates are covered
+- 2-second delay between requests, retry with 10s backoff on rate limit
 
 ---
 
-## The Correct 10-Minute SOP
+## Notes for Future Agents
 
-| Time | Agent A (Seats.aero) | Agent B (amex.point.me) |
-|------|---------------------|------------------------|
-| 0:00 | Start API sweep — all outbound dates | Start browser sweep — all outbound dates |
-| 3:00 | Outbound list complete, start return sweep | Still sweeping outbound (browser is slower) |
-| 5:00 | Return list complete, run combo math | Start return sweep |
-| 7:00 | Dataset A ready | Return sweep complete, run combo math |
-| 8:00 | — | Dataset B ready |
-| 8:00–10:00 | **Cross-reference both datasets, score, rank, write to sheet + Slack** |
-
-Total: ~10 minutes. Both agents start simultaneously.
-
+- Always use amex.point.me (NOT www.point.me) — the amex subdomain is pre-filtered to Amex partners
+- Always check that Amex login session is active before starting
+- Always search 1 passenger, one-way — multiply manually for round trip + multiple pax
+- Seats.aero data may be up to a few hours old — point.me is real-time
+- Award space can disappear between search and booking — speed matters
+- Never transfer points until availability is confirmed
