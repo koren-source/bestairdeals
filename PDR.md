@@ -465,3 +465,107 @@ bestairdeals/
 ---
 
 *Last updated: 2026-04-03 · Author: Q*
+
+---
+
+## ARCHITECTURE CORRECTION — v2 (Parallel Independent Sweeps)
+
+> Updated based on design review. Previous version incorrectly described Agent B as "verifying top 10 from Agent A." The correct design is full independent parallel sweeps.
+
+### Correct Flow
+
+```
+AGENT A — Seats.aero API          AGENT B — amex.point.me browser
+━━━━━━━━━━━━━━━━━━━━━━━━━         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Full sweep: every outbound date    Full sweep: every outbound date
+Full sweep: every return date      Full sweep: every return date
+All programs simultaneously        All Amex programs via UI
+Combo math → ranked list           Combo math → ranked list
+↓                                  ↓
+DATASET A (structured JSON)        DATASET B (structured JSON)
+                    ↓
+          CROSS-REFERENCE ENGINE
+     Match on: route + date + program
+     Where both agree → HIGH CONFIDENCE ✅
+     Where only one found it → MEDIUM 🟡
+     Where prices differ >10% → DISCREPANCY ⚠️
+                    ↓
+            FINAL OUTPUT (ranked + confidence-scored)
+```
+
+**Key rule: Agent A does NOT feed Agent B. They run in parallel and collect independently. Cross-reference happens at the end.**
+
+---
+
+## Data Schema — For Cross-Referencing
+
+Both agents output records using this shared schema so they can be joined:
+
+```json
+// RECORD — one search result
+{
+  "source": "seats_aero | point_me",
+  "direction": "outbound | return",
+  "origin": "LAS",
+  "destination": "LHR",
+  "date": "2026-06-01",
+  "program": "flyingblue",
+  "airline": "KL",
+  "pts_per_person_ow": 36000,
+  "fees_usd": 168.50,
+  "seats_available": 8,
+  "stops": 1,
+  "confidence": "high | medium | low"
+}
+
+// COMBO — outbound + return paired
+{
+  "outbound": { /* RECORD */ },
+  "return": { /* RECORD */ },
+  "stay_days": 21,
+  "total_pts_2pax": 118000,   // = (OB_pts + RET_pts) × 2 passengers
+  "total_fees_usd": 337.00,
+  "score": 151700,             // = total_pts + (total_fees × 100)
+  "a_confirmed": true,         // Seats.aero found this
+  "b_confirmed": true,         // point.me found this
+  "confidence": "high"         // high = both confirmed, medium = one source
+}
+```
+
+**Cross-reference matching key:** `direction + origin + destination + date + program`
+
+---
+
+## Agent Timeout & Load Rules
+
+**No hard timeouts on agents — award searches take as long as they take.**
+
+### Seats.aero API
+- Response is instant JSON — no waiting needed
+- Rate limit: be respectful, add 500ms between calls if doing many
+- Data freshness: can be up to a few hours old — note this in output
+
+### amex.point.me Browser
+- **Minimum 8 seconds** wait after every navigation before reading results
+- If blank after 8s: scroll down, wait 5 more seconds
+- If blank after 15s: re-navigate to the same URL
+- Never skip a date because it loads slowly — slow = working
+- Amex login session must be active (profile="user" has the session)
+- If login expired: stop and notify user — cannot proceed without auth
+- Do not time out the browser agent — let it run until all dates are covered
+
+---
+
+## The Correct 10-Minute SOP
+
+| Time | Agent A (Seats.aero) | Agent B (amex.point.me) |
+|------|---------------------|------------------------|
+| 0:00 | Start API sweep — all outbound dates | Start browser sweep — all outbound dates |
+| 3:00 | Outbound list complete, start return sweep | Still sweeping outbound (browser is slower) |
+| 5:00 | Return list complete, run combo math | Start return sweep |
+| 7:00 | Dataset A ready | Return sweep complete, run combo math |
+| 8:00 | — | Dataset B ready |
+| 8:00–10:00 | **Cross-reference both datasets, score, rank, write to sheet + Slack** |
+
+Total: ~10 minutes. Both agents start simultaneously.
+
