@@ -145,6 +145,71 @@ Two-agent system that:
 
 ---
 
+## Dual-Source Truth Architecture
+
+This is a core design principle. Two independent sources of truth working in sequence — breadth first, then precision.
+
+```
+SEATS.AERO (Agent A)          AMEX.POINT.ME (Agent B)
+━━━━━━━━━━━━━━━━━━━━          ━━━━━━━━━━━━━━━━━━━━━━━
+• API — no browser needed     • Browser automation
+• All dates in 1 call         • Real-time Amex pricing
+• ~3 second response          • 6-8s per search
+• ~30 programs at once        • Amex partners only
+• May lag by hours            • Always current
+• No booking instructions     • Has booking flow + URL
+↓                             ↓
+BROAD SWEEP (all options)     VERIFY + CONFIRM (top picks)
+```
+
+### What each source provides
+
+**Seats.aero (Agent A):**
+- Broad availability sweep across all Amex MR transfer partners simultaneously
+- Fast: all programs × all dates in a single API call per program (~3s each)
+- Returns: which dates have seats, approximate points cost, fees, seats remaining, operating airlines
+- Limitation: data may lag by a few hours; fees can occasionally differ from live pricing
+
+**amex.point.me (Agent B):**
+- Exact, real-time pricing as Amex actually sees it — the authoritative source for transfer partner rates
+- Browser-based: requires automation, 6–8s per search
+- Returns: confirmed pts/fees for exact pax count, 2-pax availability check, actual booking URL and step-by-step booking instructions
+- Limitation: too slow to sweep 60+ dates × 15 programs = 900 searches; must be targeted
+
+### How they work together
+
+```
+Step 1 — Agent A (Seats.aero API)
+  └─ Sweeps all programs × full date range
+  └─ Scores all combos (outbound × return)
+  └─ Returns: top 20 candidates ranked by score
+         ↓
+Step 2 — Agent B (amex.point.me browser)
+  └─ Verifies top 5 from Agent A
+  └─ Confirms exact pts + fees for 2 pax
+  └─ Checks real-time seat availability
+  └─ Captures booking URL + instructions
+         ↓
+Step 3 — Final Output
+  └─ Seats.aero-sourced + point.me-verified
+  └─ Confidence: 90%+
+  └─ Each result tagged: [API] or [API + Verified]
+```
+
+### Why both matter
+
+| | Seats.aero only | point.me only | Both |
+|---|---|---|---|
+| Speed | ✅ Fast | ❌ Slow (900+ searches) | ✅ Fast sweep + targeted verify |
+| Accuracy | ⚠️ May lag | ✅ Always current | ✅ Confirmed on top picks |
+| Coverage | ✅ All dates/programs | ✅ All Amex partners | ✅ Full coverage |
+| Booking info | ❌ None | ✅ URL + instructions | ✅ On verified results |
+| **Verdict** | Good for discovery | Good for confirmation | **Best of both** |
+
+> **Rule of thumb:** Seats.aero finds the candidates. point.me confirms the winner.
+
+---
+
 ## Scoring Formula
 
 ```
