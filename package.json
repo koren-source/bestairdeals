@@ -5,12 +5,16 @@
   "scripts": {
     "search": "node skill/scripts/search.js",
     "cron": "node skill/scripts/cron.js",
+    "start:api": "node skill/scripts/api-server.js",
+    "build": "echo \"window.BESTAIRDEALS_CONFIG={apiUrl:'${API_URL:-http://localhost:3001}',apiToken:'${API_TOKEN:-}'};\" > web/config.js",
     "test": "vitest"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
   },
   "dependencies": {
-    "dotenv": "^16.0.0"
+    "@hono/node-server": "^1.19.12",
+    "dotenv": "^16.0.0",
+    "hono": "^4.12.10"
   }
 }
