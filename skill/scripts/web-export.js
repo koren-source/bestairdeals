@@ -34,33 +34,42 @@ export function writeWebData(scored, nearMisses, config, programs) {
     timeStyle: "short",
   });
 
+  // Slim leg data to only what the dashboard needs
+  function slimLeg(leg) {
+    return {
+      date: leg.date,
+      origin: leg.origin,
+      destination: leg.destination,
+      program: leg.program,
+      airline: leg.airline || "",
+      stops: leg.stops ?? 0,
+      fees_usd: leg.fees_usd ?? 0,
+    };
+  }
+
   const dataPayload = {
     scored: scored.map((c, i) => ({
       rank: i + 1,
       confirmed: c.confirmed,
-      outbound: c.outbound,
-      return: c.return,
+      outbound: slimLeg(c.outbound),
+      return: slimLeg(c.return),
       stay_days: c.stay_days,
       total_pts: c.total_pts,
       total_fees: c.total_fees,
       score: c.score,
       flags: c.flags || [],
-      source_tag: c.source_tag || "",
       award_cost_usd: c.award_cost_usd ?? null,
       cash_price_usd: c.cash_price_usd ?? null,
       value_ratio: c.value_ratio ?? null,
       verdict: c.verdict ?? null,
-      summary: c.summary ?? null,
     })),
-    nearMisses: (nearMisses || []).map((nm) => ({
+    nearMisses: (nearMisses || []).slice(0, 50).map((nm) => ({
       reason: nm.reason,
-      outbound: nm.outbound,
-      return: nm.return,
+      outbound: slimLeg(nm.outbound),
+      return: slimLeg(nm.return),
       stay_days: nm.stay_days,
       total_pts: nm.total_pts,
       total_fees: nm.total_fees,
-      pts_delta: nm.pts_delta ?? null,
-      no_baseline: nm.no_baseline || false,
     })),
     config: {
       origin: config.origin,
@@ -77,7 +86,7 @@ export function writeWebData(scored, nearMisses, config, programs) {
     timestamp: tsDisplay,
   };
 
-  writeFileSync(DATA_PATH, JSON.stringify(dataPayload, null, 2), "utf-8");
+  writeFileSync(DATA_PATH, JSON.stringify(dataPayload), "utf-8");
   console.log(`[web-export] web/data.json written (${scored.length} combos)`);
   return DATA_PATH;
 }

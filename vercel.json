@@ -1,3 +1,5 @@
 {
-  "outputDirectory": "web"
+  "buildCommand": "echo 'static site'",
+  "outputDirectory": "web",
+  "framework": null
 }
