@@ -36,6 +36,17 @@ Two agents run in parallel via `Promise.all`. Agent A hits Seats.aero API (~30s)
 - Seats.aero API key: `/Users/q/.openclaw/workspace/credentials/seats-aero-api-key.txt`
 - Build code locally, push to git, pull on Mini to run
 
+## Deployment
+
+- **Dashboard:** Vercel static site at `bestairdeals.vercel.app`
+- **API server:** Runs on Mac Mini (port 3002, `bordeaux-v1` workspace), exposed via cloudflared named tunnel `q-relay`
+- **Tunnel URL:** `https://bestairdeals.whiteslateconsulting.com`
+- **Tunnel auto-restart:** launchd plist `com.cloudflare.tunnel` with `KeepAlive: true`
+- **Vercel env vars (production):**
+  - `API_URL` — tunnel URL, used at build time to generate `web/config.js`
+  - `API_TOKEN` — auth token matching the Mini's `API_TOKEN` env var
+- **Build:** `npm run build` writes `web/config.js` from env vars. If `API_URL` is missing, it falls back to `localhost:3001` and the dashboard will show the Mini as offline.
+
 ## Design doc
 
 Full design doc with architecture, combo math detail, and eng review findings:
