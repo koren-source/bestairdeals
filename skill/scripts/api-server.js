@@ -5,6 +5,7 @@
  *   POST   /search   — Start a search, returns SSE stream
  *   DELETE /search   — Abort the active search
  *   GET    /status   — Health check + search state
+ *   GET    /results  — Latest search results (data.json)
  *   GET    /history  — Recent search history
  *
  * Runs on Mac Mini, port 3001.
@@ -16,7 +17,12 @@ import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
 import { serve } from '@hono/node-server';
 import { readFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const WEB_DATA_PATH = join(__dirname, '..', '..', 'web', 'data.json');
 import { startBrowseDaemon, waitForBrowseServer, stopBrowseDaemon } from './browse-daemon.js';
 import { validateSearchParams } from './config.js';
 import { getBrowseServer } from './cash-price.js';
@@ -232,6 +238,17 @@ app.get('/status', (c) => {
       : { active: false },
     last_search: readLastSearch(),
   });
+});
+
+// ─── GET /results ───────────────────────────────────────────────────────
+
+app.get('/results', (c) => {
+  try {
+    const raw = readFileSync(WEB_DATA_PATH, 'utf-8');
+    return c.json(JSON.parse(raw));
+  } catch {
+    return c.json({ scored: [], nearMisses: [], config: {}, programs: {}, timestamp: null }, 404);
+  }
 });
 
 // ─── GET /history ───────────────────────────────────────────────────────
