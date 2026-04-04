@@ -112,13 +112,16 @@ export async function runSearch(extConfig, extPrograms) {
   console.log(`[search] Return:   ${config.return.start} to ${config.return.end}`);
   console.log(`[search] Stay:     ${config.trip_length.min}-${config.trip_length.max} days`);
 
-  // Preflight: check browse server for cash price lookups
+  // Preflight: browse server is REQUIRED for cash price lookups
   const browseServer = getBrowseServer();
   if (browseServer) {
     console.log(`[search] ✓ Browse server found (port ${browseServer.port}) — cash prices ENABLED`);
   } else {
-    console.warn('[search] ✗ No browse server — cash prices will be SKIPPED');
-    console.warn('[search]   Start the browse daemon first if you want Google Flights cash prices');
+    throw new Error(
+      'Browse server not running. Cash prices require the browse daemon.\n' +
+      'Start it with: gstack browse --daemon\n' +
+      'Then re-run the search.'
+    );
   }
 
   // 2. Detect transfer bonuses (runs before Promise.all — shares browser with pointme.js)

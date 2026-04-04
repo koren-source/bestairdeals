@@ -7,7 +7,9 @@
  */
 
 import "dotenv/config";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { spawn } from "node:child_process";
 import { buildCombos, buildNearMisses } from "./combo.js";
 import { scoreCombo, buildSummary } from "./score.js";
 import { PROGRAMS } from "./programs.js";
@@ -16,6 +18,66 @@ import { writeHistory } from "./history.js";
 import { compareWithHistory } from "./compare.js";
 import { notify, buildNotifyMessage } from "./notify.js";
 import { detectBonuses } from "./bonus-detect.js";
+import { getBrowseServer } from "./cash-price.js";
+
+const BROWSE_BIN = join(process.env.HOME ?? "", ".claude/skills/gstack/browse/dist/browse");
+const BROWSE_STARTUP_TIMEOUT_MS = 30_000;
+const BROWSE_POLL_INTERVAL_MS = 500;
+
+/**
+ * Start the browse daemon if it isn't already running.
+ * Returns the child process (or null if it was already up).
+ */
+function startBrowseDaemon() {
+  if (getBrowseServer()) {
+    console.log("[cron] Browse server already running");
+    return null;
+  }
+
+  if (!existsSync(BROWSE_BIN)) {
+    throw new Error(
+      `Browse binary not found at ${BROWSE_BIN}. Install gstack or start the daemon manually.`
+    );
+  }
+
+  console.log("[cron] Starting browse daemon...");
+  const child = spawn(BROWSE_BIN, ["--headless"], {
+    stdio: "ignore",
+    detached: true,
+  });
+  child.unref();
+  return child;
+}
+
+/**
+ * Wait for browse.json to appear (daemon ready).
+ */
+async function waitForBrowseServer() {
+  const deadline = Date.now() + BROWSE_STARTUP_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    if (getBrowseServer()) {
+      console.log("[cron] Browse server is ready");
+      return;
+    }
+    await new Promise((r) => setTimeout(r, BROWSE_POLL_INTERVAL_MS));
+  }
+  throw new Error(
+    `Browse daemon did not start within ${BROWSE_STARTUP_TIMEOUT_MS / 1000}s`
+  );
+}
+
+/**
+ * Kill the browse daemon we started.
+ */
+function stopBrowseDaemon(child) {
+  if (!child) return;
+  try {
+    process.kill(-child.pid, "SIGTERM");
+    console.log("[cron] Browse daemon stopped");
+  } catch {
+    // already exited
+  }
+}
 
 async function main() {
   const startTime = Date.now();
@@ -27,6 +89,17 @@ async function main() {
   } catch (err) {
     console.error(`[cron] Failed to read trip.json: ${err.message}`);
     await notify(`bestairdeals CRON FAILURE: Could not read trip.json — ${err.message}`, {});
+    process.exit(1);
+  }
+
+  // 0. Ensure browse daemon is running (required for cash prices)
+  let browseChild = null;
+  try {
+    browseChild = startBrowseDaemon();
+    if (browseChild) await waitForBrowseServer();
+  } catch (err) {
+    console.error(`[cron] Browse daemon failed: ${err.message}`);
+    await notify(`bestairdeals CRON FAILURE: ${err.message}`, config);
     process.exit(1);
   }
 
@@ -112,6 +185,8 @@ async function main() {
     );
 
     process.exit(1);
+  } finally {
+    stopBrowseDaemon(browseChild);
   }
 }
 
