@@ -381,6 +381,160 @@
   .reason-date { background: #F59E0B20; color: #F59E0B; }
   .reason-seats { background: #EF444420; color: #EF4444; }
 
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 24px;
+    background: #161820;
+    border-bottom: 1px solid #2A2D37;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+  }
+  .status-dot.online { background: #22C55E; }
+  .status-dot.offline { background: #EF4444; }
+  .status-item { color: #71717A; }
+  .status-item .val { color: #E4E4E7; }
+
+  /* Search form */
+  .search-form {
+    padding: 20px 24px;
+    background: #1A1D27;
+    border-bottom: 1px solid #2A2D37;
+  }
+  .search-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    max-width: 900px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-label {
+    font-size: 11px;
+    color: #71717A;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-input {
+    background: #0F1117;
+    border: 1px solid #2A2D37;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #E4E4E7;
+    font-size: 13px;
+    font-family: ui-monospace, monospace;
+  }
+  .form-input:focus { outline: none; border-color: #3B82F6; }
+  .form-select {
+    background: #0F1117;
+    border: 1px solid #2A2D37;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #E4E4E7;
+    font-size: 13px;
+    font-family: ui-monospace, monospace;
+    cursor: pointer;
+  }
+
+  .date-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+    align-items: center;
+  }
+  .date-mode-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #E4E4E7;
+    cursor: pointer;
+  }
+
+  .exact-fields, .flex-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    max-width: 900px;
+    margin-top: 8px;
+  }
+
+  .search-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    align-items: center;
+  }
+  .btn-search {
+    background: #3B82F6;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-search:hover { opacity: 0.85; }
+  .btn-search:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-abort {
+    background: #EF444420;
+    color: #EF4444;
+    border: 1px solid #EF444440;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: none;
+  }
+  .search-progress {
+    font-size: 12px;
+    color: #71717A;
+    font-family: ui-monospace, monospace;
+    margin-left: 8px;
+  }
+
+  /* Search history */
+  .history-section {
+    margin-top: 24px;
+  }
+  .history-card {
+    background: #1A1D27;
+    border: 1px solid #2A2D37;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .history-card:hover { border-color: #3B82F640; }
+  .history-info { color: #E4E4E7; }
+  .history-meta { color: #71717A; }
+  .btn-rerun {
+    background: #3B82F620;
+    color: #3B82F6;
+    border: 1px solid #3B82F640;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-rerun:hover { background: #3B82F640; }
+
   /* Footer */
   .footer {
     text-align: center;
@@ -447,6 +601,93 @@
 <div class="header">
   <div class="header-logo">best<span>air</span>deals</div>
   <div class="header-stats" id="headerStats">Loading...</div>
+</div>
+
+<!-- Status bar -->
+<div class="status-bar" id="statusBar">
+  <span class="status-item"><span class="status-dot offline" id="miniDot"></span>Mini: <span class="val" id="miniStatus">Checking...</span></span>
+  <span class="status-item">Browse: <span class="val" id="browseStatus">...</span></span>
+  <span class="status-item">Last search: <span class="val" id="lastSearchTime">...</span></span>
+</div>
+
+<!-- Search form -->
+<div class="search-form" id="searchForm">
+  <div class="search-form-grid">
+    <div class="form-group">
+      <label class="form-label">From</label>
+      <input type="text" class="form-input" id="sfOrigin" placeholder="LAS" maxlength="3">
+    </div>
+    <div class="form-group">
+      <label class="form-label">To (comma-sep)</label>
+      <input type="text" class="form-input" id="sfDest" placeholder="LHR, LGW">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cabin</label>
+      <select class="form-select" id="sfCabin">
+        <option value="economy">Economy</option>
+        <option value="premium">Premium</option>
+        <option value="business">Business</option>
+        <option value="first">First</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pax</label>
+      <input type="number" class="form-input" id="sfPax" min="1" max="9" value="2">
+    </div>
+  </div>
+
+  <div class="date-mode-toggle">
+    <label><input type="radio" name="dateMode" value="exact" checked> Exact</label>
+    <label><input type="radio" name="dateMode" value="flex"> Flexible</label>
+  </div>
+
+  <div class="exact-fields" id="exactFields">
+    <div class="form-group">
+      <label class="form-label">Outbound Start</label>
+      <input type="date" class="form-input" id="sfOutStart">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Outbound End</label>
+      <input type="date" class="form-input" id="sfOutEnd">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Return Start</label>
+      <input type="date" class="form-input" id="sfRetStart">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Return End</label>
+      <input type="date" class="form-input" id="sfRetEnd">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Min Days</label>
+      <input type="number" class="form-input" id="sfMinDays" min="1" value="19">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Max Days</label>
+      <input type="number" class="form-input" id="sfMaxDays" min="1" value="23">
+    </div>
+  </div>
+
+  <div class="flex-fields" id="flexFields" style="display:none">
+    <div class="form-group">
+      <label class="form-label">Month</label>
+      <input type="month" class="form-input" id="sfMonth">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Min Days</label>
+      <input type="number" class="form-input" id="sfFlexMinDays" min="1" value="19">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Max Days</label>
+      <input type="number" class="form-input" id="sfFlexMaxDays" min="1" value="23">
+    </div>
+  </div>
+
+  <div class="search-actions">
+    <button class="btn-search" id="btnSearch">Search</button>
+    <button class="btn-abort" id="btnAbort">Abort</button>
+    <span class="search-progress" id="searchProgress"></span>
+  </div>
 </div>
 
 <!-- Config bar -->
@@ -555,13 +796,414 @@
       </table>
     </div>
 
+    <!-- Search History -->
+    <div class="history-section" id="historySection" style="display:none">
+      <div class="section-title">Recent Searches</div>
+      <div id="historyList"></div>
+    </div>
+
     <div class="footer" id="footer"></div>
   </div>
 </div>
 
+<script src="config.js" onerror="window.BESTAIRDEALS_CONFIG={}"></script>
 <script>
 var DATA = null;
 var AMEX_TRANSFER_URL = 'https://global.americanexpress.com/rewards/transfer';
+
+// --- API Config ---
+var CFG = (typeof window.BESTAIRDEALS_CONFIG !== 'undefined') ? window.BESTAIRDEALS_CONFIG : {};
+var API_URL = CFG.apiUrl || 'http://localhost:3001';
+var API_TOKEN = CFG.apiToken || '';
+
+// --- Search State ---
+var searchState = 'idle'; // idle, searching, partial, complete, error
+var searchReader = null;
+
+// --- API Helpers ---
+function apiHeaders() {
+  var h = { 'Content-Type': 'application/json' };
+  if (API_TOKEN) h['Authorization'] = 'Bearer ' + API_TOKEN;
+  return h;
+}
+
+// --- Status Polling ---
+function pollStatus() {
+  fetch(API_URL + '/status', { headers: apiHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(s) {
+      document.getElementById('miniDot').className = 'status-dot online';
+      document.getElementById('miniStatus').textContent = 'Online';
+      document.getElementById('browseStatus').textContent = s.browse_server === 'ready' ? 'Ready' : 'Not Running';
+      if (s.last_search) {
+        var ago = Math.round((Date.now() - new Date(s.last_search.completed_at || s.last_search.started_at).getTime()) / 60000);
+        document.getElementById('lastSearchTime').textContent = ago < 60 ? ago + 'm ago' : Math.round(ago / 60) + 'h ago';
+      } else {
+        document.getElementById('lastSearchTime').textContent = 'Never';
+      }
+      document.getElementById('btnSearch').disabled = (s.search && s.search.active) || false;
+    })
+    .catch(function() {
+      document.getElementById('miniDot').className = 'status-dot offline';
+      document.getElementById('miniStatus').textContent = 'Offline';
+      document.getElementById('browseStatus').textContent = '...';
+    });
+}
+setInterval(pollStatus, 30000);
+pollStatus();
+
+// --- Load Search History ---
+function escapeHtml(str) {
+  var d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function loadHistory() {
+  fetch(API_URL + '/history?limit=10', { headers: apiHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(items) {
+      if (!items || items.length === 0) return;
+      document.getElementById('historySection').style.display = '';
+      var list = document.getElementById('historyList');
+      list.innerHTML = '';
+      items.forEach(function(item) {
+        var p = item.params || {};
+        var route = (p.origin || '?') + ' -> ' + (p.destinations ? p.destinations.join(', ') : '?');
+        var when = item.completed_at ? new Date(item.completed_at).toLocaleDateString() : '';
+        var card = document.createElement('div');
+        card.className = 'history-card';
+        var info = document.createElement('div');
+        var infoLine = document.createElement('div');
+        infoLine.className = 'history-info';
+        infoLine.textContent = route + ' | ' + (p.cabin || '') + ' | ' + (p.pax || '') + ' pax';
+        var metaLine = document.createElement('div');
+        metaLine.className = 'history-meta';
+        metaLine.textContent = when + ' | ' + (item.combo_count || 0) + ' combos | ' + (item.duration_s || 0) + 's';
+        info.appendChild(infoLine);
+        info.appendChild(metaLine);
+        var btn = document.createElement('button');
+        btn.className = 'btn-rerun';
+        btn.textContent = 'Re-run';
+        btn.addEventListener('click', rerunSearch.bind(null, item.params));
+        card.appendChild(info);
+        card.appendChild(btn);
+        list.appendChild(card);
+      });
+    })
+    .catch(function() { /* history unavailable */ });
+}
+loadHistory();
+
+function rerunSearch(params) {
+  fillFormFromParams(params);
+  startSearch();
+}
+
+// --- Date Mode Toggle ---
+document.querySelectorAll('input[name="dateMode"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    var isExact = this.value === 'exact';
+    document.getElementById('exactFields').style.display = isExact ? '' : 'none';
+    document.getElementById('flexFields').style.display = isExact ? 'none' : '';
+  });
+});
+
+// --- Build Search Params ---
+function buildParams() {
+  var mode = document.querySelector('input[name="dateMode"]:checked').value;
+  var origin = document.getElementById('sfOrigin').value.trim().toUpperCase();
+  var dests = document.getElementById('sfDest').value.split(',').map(function(d) { return d.trim().toUpperCase(); }).filter(Boolean);
+  var cabin = document.getElementById('sfCabin').value;
+  var pax = parseInt(document.getElementById('sfPax').value, 10) || 1;
+
+  var params = { origin: origin, destinations: dests, cabin: cabin, pax: pax, mode: mode };
+
+  if (mode === 'exact') {
+    params.outbound = {
+      start: document.getElementById('sfOutStart').value,
+      end: document.getElementById('sfOutEnd').value,
+    };
+    params['return'] = {
+      start: document.getElementById('sfRetStart').value,
+      end: document.getElementById('sfRetEnd').value,
+    };
+    params.trip_length = {
+      min: parseInt(document.getElementById('sfMinDays').value, 10),
+      max: parseInt(document.getElementById('sfMaxDays').value, 10),
+    };
+  } else {
+    params.outbound = { month: document.getElementById('sfMonth').value };
+    params.trip_length = {
+      min: parseInt(document.getElementById('sfFlexMinDays').value, 10),
+      max: parseInt(document.getElementById('sfFlexMaxDays').value, 10),
+    };
+  }
+  return params;
+}
+
+// --- Fill Form from Params (for re-run and URL params) ---
+function fillFormFromParams(p) {
+  if (p.origin) document.getElementById('sfOrigin').value = p.origin;
+  if (p.destinations) document.getElementById('sfDest').value = p.destinations.join(', ');
+  if (p.cabin) document.getElementById('sfCabin').value = p.cabin;
+  if (p.pax) document.getElementById('sfPax').value = p.pax;
+
+  if (p.mode === 'flex') {
+    document.querySelector('input[name="dateMode"][value="flex"]').checked = true;
+    document.getElementById('exactFields').style.display = 'none';
+    document.getElementById('flexFields').style.display = '';
+    if (p.outbound && p.outbound.month) document.getElementById('sfMonth').value = p.outbound.month;
+    if (p.trip_length) {
+      document.getElementById('sfFlexMinDays').value = p.trip_length.min;
+      document.getElementById('sfFlexMaxDays').value = p.trip_length.max;
+    }
+  } else {
+    document.querySelector('input[name="dateMode"][value="exact"]').checked = true;
+    document.getElementById('exactFields').style.display = '';
+    document.getElementById('flexFields').style.display = 'none';
+    if (p.outbound) {
+      document.getElementById('sfOutStart').value = p.outbound.start || '';
+      document.getElementById('sfOutEnd').value = p.outbound.end || '';
+    }
+    if (p['return']) {
+      document.getElementById('sfRetStart').value = p['return'].start || '';
+      document.getElementById('sfRetEnd').value = p['return'].end || '';
+    }
+    if (p.trip_length) {
+      document.getElementById('sfMinDays').value = p.trip_length.min;
+      document.getElementById('sfMaxDays').value = p.trip_length.max;
+    }
+  }
+}
+
+// --- URL Params ---
+function loadUrlParams() {
+  var sp = new URLSearchParams(window.location.search);
+  if (!sp.has('origin')) return;
+  var p = {
+    origin: sp.get('origin') || '',
+    destinations: (sp.get('destinations') || '').split(',').filter(Boolean),
+    cabin: sp.get('cabin') || 'economy',
+    pax: parseInt(sp.get('pax') || '1', 10),
+    mode: sp.get('mode') || 'exact',
+  };
+  if (p.mode === 'flex') {
+    p.outbound = { month: sp.get('month') || '' };
+    p.trip_length = { min: parseInt(sp.get('min') || '19', 10), max: parseInt(sp.get('max') || '23', 10) };
+  } else {
+    p.outbound = { start: sp.get('outStart') || '', end: sp.get('outEnd') || '' };
+    p['return'] = { start: sp.get('retStart') || '', end: sp.get('retEnd') || '' };
+    p.trip_length = { min: parseInt(sp.get('min') || '19', 10), max: parseInt(sp.get('max') || '23', 10) };
+  }
+  fillFormFromParams(p);
+}
+loadUrlParams();
+
+function updateUrlParams(params) {
+  var sp = new URLSearchParams();
+  sp.set('origin', params.origin);
+  sp.set('destinations', params.destinations.join(','));
+  sp.set('cabin', params.cabin);
+  sp.set('pax', params.pax);
+  sp.set('mode', params.mode);
+  if (params.mode === 'flex') {
+    sp.set('month', params.outbound.month);
+  } else {
+    sp.set('outStart', params.outbound.start);
+    sp.set('outEnd', params.outbound.end);
+    sp.set('retStart', params['return'].start);
+    sp.set('retEnd', params['return'].end);
+  }
+  sp.set('min', params.trip_length.min);
+  sp.set('max', params.trip_length.max);
+  history.replaceState(null, '', '?' + sp.toString());
+}
+
+// --- SSE Search ---
+function startSearch() {
+  var params = buildParams();
+  if (!params.origin || params.destinations.length === 0) {
+    alert('Fill in origin and destination(s)');
+    return;
+  }
+
+  updateUrlParams(params);
+  searchState = 'searching';
+  document.getElementById('btnSearch').disabled = true;
+  document.getElementById('btnAbort').style.display = '';
+  document.getElementById('searchProgress').textContent = 'Starting search...';
+
+  // Show main content area, hide static loading
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('errorState').style.display = 'none';
+  document.getElementById('mainContent').style.display = '';
+
+  fetch(API_URL + '/search', {
+    method: 'POST',
+    headers: apiHeaders(),
+    body: JSON.stringify(params),
+  }).then(function(res) {
+    if (res.status === 409) {
+      document.getElementById('searchProgress').textContent = 'Another search is already running.';
+      document.getElementById('btnSearch').disabled = false;
+      document.getElementById('btnAbort').style.display = 'none';
+      return;
+    }
+    if (res.status === 400) {
+      return res.json().then(function(d) {
+        document.getElementById('searchProgress').textContent = 'Error: ' + d.error;
+        document.getElementById('btnSearch').disabled = false;
+        document.getElementById('btnAbort').style.display = 'none';
+      });
+    }
+    if (!res.ok) {
+      document.getElementById('searchProgress').textContent = 'Error: HTTP ' + res.status;
+      document.getElementById('btnSearch').disabled = false;
+      document.getElementById('btnAbort').style.display = 'none';
+      return;
+    }
+
+    // Read SSE stream
+    var reader = res.body.getReader();
+    searchReader = reader;
+    var decoder = new TextDecoder();
+    var buffer = '';
+
+    function pump() {
+      reader.read().then(function(result) {
+        if (result.done) {
+          searchDone();
+          return;
+        }
+        buffer += decoder.decode(result.value, { stream: true });
+
+        // Parse SSE events (split by double newline)
+        var parts = buffer.split('\n\n');
+        buffer = parts.pop(); // Keep incomplete chunk
+
+        parts.forEach(function(chunk) {
+          var eventType = 'message';
+          var dataStr = '';
+          chunk.split('\n').forEach(function(line) {
+            if (line.startsWith('event: ')) eventType = line.slice(7);
+            else if (line.startsWith('data: ')) dataStr = line.slice(6);
+          });
+          if (dataStr) {
+            try { handleSSE(eventType, JSON.parse(dataStr)); }
+            catch (e) { console.error('SSE parse error:', e); }
+          }
+        });
+
+        pump();
+      }).catch(function(err) {
+        console.error('SSE read error:', err);
+        searchDone();
+      });
+    }
+    pump();
+  }).catch(function(err) {
+    document.getElementById('searchProgress').textContent = 'Connection failed: ' + err.message;
+    document.getElementById('btnSearch').disabled = false;
+    document.getElementById('btnAbort').style.display = 'none';
+  });
+}
+
+function handleSSE(event, data) {
+  if (event === 'progress') {
+    var msg = data.agent === 'pointme' ? 'point.me' : 'seats.aero';
+    msg += ': ' + (data.dates_completed || '?') + '/' + (data.dates_total || '?') + ' dates';
+    if (data.message) msg += ' | ' + data.message;
+    document.getElementById('searchProgress').textContent = msg;
+  }
+  else if (event === 'partial') {
+    searchState = 'partial';
+    document.getElementById('searchProgress').textContent = 'Seats.aero done. ' + (data.total_combos || 0) + ' combos. Waiting for point.me...';
+    updateLiveResults(data.combos);
+  }
+  else if (event === 'update') {
+    document.getElementById('searchProgress').textContent = 'Updating: ' + (data.total_combos || 0) + ' combos (' + (data.pointme_records || 0) + ' point.me records)';
+    updateLiveResults(data.combos);
+  }
+  else if (event === 'done') {
+    searchState = 'complete';
+    document.getElementById('searchProgress').textContent = 'Done! ' + (data.total_combos || 0) + ' combos in ' + (data.duration_s || '?') + 's';
+    updateLiveResults(data.combos);
+    searchDone();
+    loadHistory();
+  }
+  else if (event === 'error') {
+    if (!data.recoverable) {
+      searchState = 'error';
+      document.getElementById('searchProgress').textContent = 'Error: ' + data.message;
+      searchDone();
+    } else {
+      document.getElementById('searchProgress').textContent = 'Warning: ' + data.agent + ' error: ' + data.message;
+    }
+  }
+}
+
+function updateLiveResults(combos) {
+  if (!combos || combos.length === 0) return;
+
+  // Inject rank
+  combos.forEach(function(c, i) { c.rank = i + 1; });
+
+  // Build minimal DATA for render functions
+  var params = buildParams();
+  if (!DATA) {
+    DATA = {
+      scored: combos,
+      nearMisses: [],
+      config: {
+        origin: params.origin,
+        destinations: params.destinations,
+        cabin: params.cabin,
+        pax: params.pax,
+        outbound: params.outbound || {},
+        'return': params['return'] || {},
+        trip_length: params.trip_length || {},
+      },
+      programs: {},
+      timestamp: new Date().toLocaleString(),
+    };
+  } else {
+    DATA.scored = combos;
+    DATA.timestamp = new Date().toLocaleString();
+  }
+
+  // Pull program names from combo data
+  combos.forEach(function(c) {
+    if (c.outbound && c.outbound.program && !DATA.programs[c.outbound.program]) {
+      DATA.programs[c.outbound.program] = { name: c.outbound.program };
+    }
+    if (c['return'] && c['return'].program && !DATA.programs[c['return'].program]) {
+      DATA.programs[c['return'].program] = { name: c['return'].program };
+    }
+  });
+
+  renderTopDeals();
+  renderTable();
+  renderHeatmap();
+}
+
+function searchDone() {
+  document.getElementById('btnSearch').disabled = false;
+  document.getElementById('btnAbort').style.display = 'none';
+  searchReader = null;
+}
+
+// --- Abort ---
+document.getElementById('btnAbort').addEventListener('click', function() {
+  fetch(API_URL + '/search', { method: 'DELETE', headers: apiHeaders() })
+    .then(function() {
+      document.getElementById('searchProgress').textContent = 'Aborting...';
+    })
+    .catch(function() {});
+});
+
+// --- Search Button ---
+document.getElementById('btnSearch').addEventListener('click', startSearch);
 
 // --- Helpers ---
 function fmt(n) { return n != null ? n.toLocaleString('en-US') : ''; }
