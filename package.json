@@ -5,12 +5,16 @@
   "scripts": {
     "search": "node skill/scripts/search.js",
     "cron": "node skill/scripts/cron.js",
+    "start:api": "node skill/scripts/api-server.js",
+    "build": "node -e \"const u=(process.env.API_URL||'http://localhost:3001').trim();const t=(process.env.API_TOKEN||'').trim();require('fs').writeFileSync('web/config.js','window.BESTAIRDEALS_CONFIG={apiUrl:'+JSON.stringify(u)+',apiToken:'+JSON.stringify(t)+'};\\n')\"",
     "test": "vitest"
   },
   "devDependencies": {
     "vitest": "^3.0.0"
   },
   "dependencies": {
-    "dotenv": "^16.0.0"
+    "@hono/node-server": "^1.19.12",
+    "dotenv": "^16.0.0",
+    "hono": "^4.12.10"
   }
 }

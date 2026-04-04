@@ -1,13 +1,16 @@
 /**
  * search.js — Orchestrator
  *
- * Runs both agents (Seats.aero API + point.me browser) in parallel,
- * merges and deduplicates results, builds combos, scores, and outputs
- * to Google Sheet (CSV fallback).
+ * Three composable layers:
+ *   searchCore()        — runs both agents, returns raw results
+ *   mergeScoreAndSort() — merge, combo math, score (pure, no side effects)
+ *   writeOutputs()      — sheets, report, web export, history, notify
+ *
+ * runSearch() composes all 3 (backwards compatible with cron.js).
+ * runSearchStreaming() uses callbacks for SSE streaming.
  */
 
 import 'dotenv/config';
-import { readFileSync } from 'fs';
 import { searchSeatsAero } from './seats-aero.js';
 import { searchPointMe } from './pointme.js';
 import { mergeAndDedup } from './merge.js';
@@ -18,147 +21,52 @@ import { writeToSheet } from './sheets.js';
 import { writeHistory } from './history.js';
 import { detectBonuses } from './bonus-detect.js';
 import { notify, buildNotifyMessage } from './notify.js';
-import { addCashPrices } from './cash-price.js';
+import { addCashPrices, getBrowseServer } from './cash-price.js';
 import { writeReport } from './report.js';
 import { writeWebData } from './web-export.js';
+import { loadConfig } from './config.js';
 
-const VALID_CABINS = ['economy', 'premium', 'business', 'first'];
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-/**
- * Load and validate trip.json config.
- * Throws on invalid config with a descriptive message.
- *
- * @returns {Object} Validated config
- */
-function loadConfig() {
-  let raw;
-  try {
-    raw = readFileSync('trip.json', 'utf-8');
-  } catch (err) {
-    throw new Error(`Cannot read trip.json: ${err.message}`);
-  }
-
-  let config;
-  try {
-    config = JSON.parse(raw);
-  } catch (err) {
-    throw new Error(`Invalid JSON in trip.json: ${err.message}`);
-  }
-
-  // Required fields
-  if (!config.origin || typeof config.origin !== 'string') {
-    throw new Error('trip.json: "origin" must be a non-empty string');
-  }
-
-  if (!Array.isArray(config.destinations) || config.destinations.length === 0) {
-    throw new Error('trip.json: "destinations" must be a non-empty array');
-  }
-
-  if (!VALID_CABINS.includes(config.cabin)) {
-    throw new Error(`trip.json: "cabin" must be one of: ${VALID_CABINS.join(', ')}. Got: "${config.cabin}"`);
-  }
-
-  if (typeof config.pax !== 'number' || config.pax < 1) {
-    throw new Error('trip.json: "pax" must be a number >= 1');
-  }
-
-  // Date validation
-  for (const field of ['outbound', 'return']) {
-    const range = config[field];
-    if (!range || !range.start || !range.end) {
-      throw new Error(`trip.json: "${field}" must have "start" and "end" dates`);
-    }
-    if (!DATE_RE.test(range.start) || !DATE_RE.test(range.end)) {
-      throw new Error(`trip.json: "${field}" dates must be YYYY-MM-DD format`);
-    }
-    if (range.start > range.end) {
-      throw new Error(`trip.json: "${field}.start" must be before "${field}.end"`);
-    }
-  }
-
-  // Trip length
-  if (!config.trip_length || typeof config.trip_length.min !== 'number' || typeof config.trip_length.max !== 'number') {
-    throw new Error('trip.json: "trip_length" must have numeric "min" and "max"');
-  }
-  if (config.trip_length.min > config.trip_length.max) {
-    throw new Error('trip.json: "trip_length.min" must be <= "trip_length.max"');
-  }
-
-  // Defaults for optional scoring params
-  config.fee_multiplier = config.fee_multiplier ?? 100;
-  config.high_fee_threshold = config.high_fee_threshold ?? 800;
-  config.stops_penalty = config.stops_penalty ?? 5000;
-  config.cross_airport_penalty = config.cross_airport_penalty ?? 5000;
-
-  return config;
-}
+// ─── Layer 1: Search Core ───────────────────────────────────────────────
 
 /**
- * Run the full search pipeline.
+ * Run both agents (Seats.aero + point.me) and return raw results.
+ * No side effects, no process.exit(). Callbacks are optional for streaming.
  *
- * When called from cron.js, config and programs are passed in.
- * When called standalone (main), they are loaded internally.
- *
- * @param {object} [extConfig] - pre-loaded config (optional, loads trip.json if omitted)
- * @param {object} [extPrograms] - programs with bonuses already applied (optional)
- * @returns {{ scored, nearMisses, config, localPrograms, filePaths, outbound, returns, totalRecords }}
+ * @param {object} config - Validated search config
+ * @param {object} programs - Programs with bonuses applied
+ * @param {object} [callbacks] - Optional streaming callbacks
+ * @param {function} [callbacks.onProgress] - Progress updates from agents
+ * @param {function} [callbacks.shouldAbort] - Returns true to abort search
+ * @returns {{ seatsResults: object[], pointmeResults: object[], totalRecords: number }}
  */
-export async function runSearch(extConfig, extPrograms) {
-  // 1. Load and validate config
-  const config = extConfig ?? loadConfig();
+export async function searchCore(config, programs, callbacks = {}) {
   console.log(`[search] Trip: ${config.origin} -> ${config.destinations.join(', ')} | ${config.cabin} | ${config.pax} pax`);
   console.log(`[search] Outbound: ${config.outbound.start} to ${config.outbound.end}`);
   console.log(`[search] Return:   ${config.return.start} to ${config.return.end}`);
   console.log(`[search] Stay:     ${config.trip_length.min}-${config.trip_length.max} days`);
 
-  // 2. Detect transfer bonuses (runs before Promise.all — shares browser with pointme.js)
-  let localPrograms;
-  if (extPrograms) {
-    localPrograms = extPrograms;
-  } else {
-    console.log('\n[search] Checking for Amex transfer bonuses...');
-    localPrograms = { ...PROGRAMS };
-    // Deep copy bonus_ratio so we never mutate the original
-    for (const key of Object.keys(localPrograms)) {
-      localPrograms[key] = { ...localPrograms[key] };
-    }
+  console.log('\n[search] Launching parallel sweeps...');
 
-    try {
-      const bonuses = await detectBonuses();
-
-      if (bonuses && bonuses.length > 0) {
-        for (const bonus of bonuses) {
-          // Validate: ratio between 1.0 and 2.0, program exists
-          if (!localPrograms[bonus.program]) {
-            console.warn(`[search] WARN: Bonus for unknown program "${bonus.program}" — skipping`);
-            continue;
-          }
-          if (typeof bonus.bonus_ratio !== 'number' || bonus.bonus_ratio < 1.0 || bonus.bonus_ratio > 2.0) {
-            console.warn(`[search] WARN: Invalid bonus ratio ${bonus.bonus_ratio} for ${bonus.program} — skipping`);
-            continue;
-          }
-
-          localPrograms[bonus.program].bonus_ratio = bonus.bonus_ratio;
-          console.log(`[search] Applied bonus: ${bonus.program} ${bonus.bonus_ratio}x from ${bonus.source_url || 'unknown source'}`);
-        }
-      } else {
-        console.log('[search] No active transfer bonuses detected');
-      }
-    } catch (err) {
-      console.warn(`[search] WARN: Bonus detection failed: ${err.message} — continuing without bonuses`);
-    }
+  const pointmeOptions = {};
+  if (callbacks.onProgress) {
+    pointmeOptions.onProgress = callbacks.onProgress;
+  }
+  if (callbacks.onDateComplete) {
+    pointmeOptions.onDateComplete = callbacks.onDateComplete;
+  }
+  if (callbacks.shouldAbort) {
+    pointmeOptions.shouldAbort = callbacks.shouldAbort;
   }
 
-  // 3. Run both agents in parallel
-  console.log('\n[search] Launching parallel sweeps...');
   const [seatsResults, pointmeResults] = await Promise.all([
-    searchSeatsAero(config, localPrograms).catch((err) => {
+    searchSeatsAero(config, programs).catch((err) => {
       console.error(`[search] ERROR: Seats.aero sweep failed: ${err.message}`);
+      if (callbacks.onError) callbacks.onError({ agent: 'seats_aero', error: err.message });
       return [];
     }),
-    searchPointMe(config).catch((err) => {
+    searchPointMe(config, pointmeOptions).catch((err) => {
       console.error(`[search] ERROR: point.me sweep failed: ${err.message}`);
+      if (callbacks.onError) callbacks.onError({ agent: 'pointme', error: err.message });
       return [];
     }),
   ]);
@@ -168,24 +76,32 @@ export async function runSearch(extConfig, extPrograms) {
   console.log(`[search] point.me:   ${pointmeResults.length} records`);
   console.log(`[search] Total raw:  ${totalRecords} records`);
 
-  // 4. Both empty = fatal
   if (seatsResults.length === 0 && pointmeResults.length === 0) {
-    console.error('\n[search] FATAL: Both agents returned zero results. Nothing to process.');
-    process.exit(1);
+    throw new Error('Both agents returned zero results. Nothing to process.');
   }
 
-  // 5. Merge and deduplicate (also applies MR normalization)
-  console.log('\n[search] Merging and deduplicating...');
-  const merged = mergeAndDedup(seatsResults, pointmeResults, localPrograms);
+  return { seatsResults, pointmeResults, totalRecords };
+}
+
+// ─── Layer 2: Merge, Score, Sort ────────────────────────────────────────
+
+/**
+ * Merge raw results, build combos, score, and sort. Pure function.
+ *
+ * @param {object[]} seatsResults
+ * @param {object[]} pointmeResults
+ * @param {object} config
+ * @param {object} programs
+ * @returns {{ scored: object[], outbound: object[], returns: object[], nearMisses: object[], totalMerged: number }}
+ */
+export function mergeScoreAndSort(seatsResults, pointmeResults, config, programs) {
+  const merged = mergeAndDedup(seatsResults, pointmeResults, programs);
   console.log(`[search] After merge: ${merged.length} unique records`);
 
-  // 6. Split into outbound and return
   const outbound = merged.filter((r) => r.direction === 'outbound');
   const returns = merged.filter((r) => r.direction === 'return');
   console.log(`[search] Outbound: ${outbound.length} | Return: ${returns.length}`);
 
-  // 7. Build combos
-  console.log('\n[search] Building combos...');
   const combos = buildCombos(outbound, returns, config);
   console.log(`[search] Valid combos: ${combos.length}`);
 
@@ -193,25 +109,34 @@ export async function runSearch(extConfig, extPrograms) {
     console.warn('[search] WARN: No valid combos found. Check dates, trip length, and seat availability.');
   }
 
-  // 8. Score and sort (lower = better)
   const scored = combos.map((c) => scoreCombo(c, config));
   scored.sort((a, b) => a.score - b.score);
 
-  // 9. Set summary on each scored combo
   scored.forEach((c, i) => {
-    c.summary = buildSummary(c, i + 1, scored.length, localPrograms);
+    c.summary = buildSummary(c, i + 1, scored.length, programs);
   });
 
-  // 10. Split into confirmed and likely tiers
-  const confirmed = scored.filter((c) => c.confirmed);
-  const likely = scored.filter((c) => !c.confirmed);
-  console.log(`[search] Confirmed: ${confirmed.length} | Likely: ${likely.length}`);
-
-  // 11. Build near-misses
   const nearMisses = buildNearMisses(outbound, returns, config, scored);
   console.log(`[search] Near-misses: ${nearMisses.length}`);
 
-  // 12. Cash price comparison for top 3
+  return { scored, outbound, returns, nearMisses, totalMerged: merged.length };
+}
+
+// ─── Layer 3: Write Outputs ─────────────────────────────────────────────
+
+/**
+ * Write all outputs: sheets, report, web export, history, notify.
+ * All side effects live here.
+ *
+ * @param {object[]} scored
+ * @param {object[]} nearMisses
+ * @param {object} config
+ * @param {object} programs
+ * @param {number} totalRecords
+ * @returns {{ filePaths: object }}
+ */
+export async function writeOutputs(scored, nearMisses, config, programs, totalRecords) {
+  // Cash price comparison for top 3
   console.log('\n[search] Looking up cash prices for top 3 deals...');
   let topWithCash = [];
   try {
@@ -219,8 +144,8 @@ export async function runSearch(extConfig, extPrograms) {
     console.log('\n[search] === TOP 3 DEALS (Points vs Cash) ===');
     for (let i = 0; i < topWithCash.length; i++) {
       const c = topWithCash[i];
-      const progOut = localPrograms[c.outbound.program]?.name ?? c.outbound.program;
-      const progRet = localPrograms[c.return.program]?.name ?? c.return.program;
+      const progOut = programs[c.outbound.program]?.name ?? c.outbound.program;
+      const progRet = programs[c.return.program]?.name ?? c.return.program;
       console.log(`  #${i + 1}: ${progOut} ${c.outbound.date} → ${progRet} ${c.return.date} (${c.stay_days}d)`);
       console.log(`      ${c.total_pts.toLocaleString()} MR + $${c.total_fees.toFixed(2)} fees = $${c.award_cost_usd} award cost`);
       console.log(`      Cash price: ${c.cash_price_usd != null ? '$' + c.cash_price_usd : 'N/A'} | Value: ${c.value_ratio ?? '?'}x | ${c.verdict}`);
@@ -232,7 +157,7 @@ export async function runSearch(extConfig, extPrograms) {
     console.warn(`[search] WARN: Cash price lookup failed: ${err.message}`);
   }
 
-  // 13. Log top 5 deals
+  // Log top 5 deals
   if (scored.length > 0) {
     console.log('\n[search] Top 5 deals:');
     const top5 = scored.slice(0, 5);
@@ -241,7 +166,7 @@ export async function runSearch(extConfig, extPrograms) {
     }
   }
 
-  // 14. Merge cash prices into scored results
+  // Merge cash prices into scored results
   if (topWithCash.length > 0) {
     for (let i = 0; i < topWithCash.length && i < scored.length; i++) {
       scored[i].award_cost_usd = topWithCash[i].award_cost_usd;
@@ -251,9 +176,9 @@ export async function runSearch(extConfig, extPrograms) {
     }
   }
 
-  // 15. Write to sheet (CSV fallback)
+  // Write to sheet (CSV fallback)
   console.log('\n[search] Writing results...');
-  let filePaths;
+  let filePaths = {};
   try {
     filePaths = writeToSheet(scored, nearMisses, config);
     console.log(`[search] Results written to: ${filePaths.results || 'unknown'}`);
@@ -267,24 +192,24 @@ export async function runSearch(extConfig, extPrograms) {
     console.error(`[search] ERROR: Failed to write results: ${err.message}`);
   }
 
-  // 16. Generate HTML report
+  // Generate HTML report
   try {
-    const reportPath = writeReport(scored, nearMisses, config, localPrograms);
+    const reportPath = writeReport(scored, nearMisses, config, programs);
     console.log(`[search] Report written to: ${reportPath}`);
     filePaths.report = reportPath;
   } catch (err) {
     console.warn(`[search] WARN: Failed to write report: ${err.message}`);
   }
 
-  // 17. Update web dashboard data
+  // Update web dashboard data
   try {
-    writeWebData(scored, nearMisses, config, localPrograms);
+    writeWebData(scored, nearMisses, config, programs);
     console.log('[search] Web data updated (web/data.json)');
   } catch (err) {
     console.warn(`[search] WARN: Failed to write web data: ${err.message}`);
   }
 
-  // 18. Write history
+  // Write history
   try {
     writeHistory(scored, config);
     console.log('[search] History log updated');
@@ -292,18 +217,169 @@ export async function runSearch(extConfig, extPrograms) {
     console.warn(`[search] WARN: Failed to write history: ${err.message}`);
   }
 
-  // 19. Notify
+  // Notify
+  const confirmed = scored.filter((c) => c.confirmed);
+  const likely = scored.filter((c) => !c.confirmed);
   try {
     const topDeal = scored[0] || null;
     const resultPath = filePaths?.results || 'output/';
-    const message = buildNotifyMessage(confirmed, likely, totalRecords, topDeal, resultPath, localPrograms);
+    const message = buildNotifyMessage(confirmed, likely, totalRecords, topDeal, resultPath, programs);
     await notify(message, config);
   } catch (err) {
     console.warn(`[search] WARN: Notification failed: ${err.message}`);
   }
 
+  return { filePaths };
+}
+
+// ─── Composed: Full Pipeline ────────────────────────────────────────────
+
+/**
+ * Detect transfer bonuses and return programs with bonuses applied.
+ */
+async function detectAndApplyBonuses(extPrograms) {
+  if (extPrograms) return extPrograms;
+
+  console.log('\n[search] Checking for Amex transfer bonuses...');
+  const localPrograms = { ...PROGRAMS };
+  for (const key of Object.keys(localPrograms)) {
+    localPrograms[key] = { ...localPrograms[key] };
+  }
+
+  try {
+    const bonuses = await detectBonuses();
+    if (bonuses && bonuses.length > 0) {
+      for (const bonus of bonuses) {
+        if (!localPrograms[bonus.program]) {
+          console.warn(`[search] WARN: Bonus for unknown program "${bonus.program}" — skipping`);
+          continue;
+        }
+        if (typeof bonus.bonus_ratio !== 'number' || bonus.bonus_ratio < 1.0 || bonus.bonus_ratio > 2.0) {
+          console.warn(`[search] WARN: Invalid bonus ratio ${bonus.bonus_ratio} for ${bonus.program} — skipping`);
+          continue;
+        }
+        localPrograms[bonus.program].bonus_ratio = bonus.bonus_ratio;
+        console.log(`[search] Applied bonus: ${bonus.program} ${bonus.bonus_ratio}x from ${bonus.source_url || 'unknown source'}`);
+      }
+    } else {
+      console.log('[search] No active transfer bonuses detected');
+    }
+  } catch (err) {
+    console.warn(`[search] WARN: Bonus detection failed: ${err.message} — continuing without bonuses`);
+  }
+
+  return localPrograms;
+}
+
+/**
+ * Run the full search pipeline (backwards compatible).
+ *
+ * @param {object} [extConfig] - pre-loaded config (optional, loads trip.json if omitted)
+ * @param {object} [extPrograms] - programs with bonuses already applied (optional)
+ * @returns {{ scored, nearMisses, config, localPrograms, filePaths, outbound, returns, totalRecords }}
+ */
+export async function runSearch(extConfig, extPrograms) {
+  const config = extConfig ?? loadConfig();
+
+  // Preflight: browse server is REQUIRED for cash price lookups
+  const browseServer = getBrowseServer();
+  if (browseServer) {
+    console.log(`[search] ✓ Browse server found (port ${browseServer.port}) — cash prices ENABLED`);
+  } else {
+    throw new Error(
+      'Browse server not running. Cash prices require the browse daemon.\n' +
+      'Start it with: gstack browse --daemon\n' +
+      'Then re-run the search.'
+    );
+  }
+
+  const localPrograms = await detectAndApplyBonuses(extPrograms);
+
+  // Layer 1: Search
+  const { seatsResults, pointmeResults, totalRecords } = await searchCore(config, localPrograms);
+
+  // Layer 2: Merge + Score
+  const { scored, outbound, returns, nearMisses } = mergeScoreAndSort(
+    seatsResults, pointmeResults, config, localPrograms
+  );
+
+  // Layer 3: Outputs
+  const { filePaths } = await writeOutputs(scored, nearMisses, config, localPrograms, totalRecords);
+
   return { scored, nearMisses, config, localPrograms, filePaths, outbound, returns, totalRecords };
 }
+
+/**
+ * Run search with SSE streaming callbacks.
+ * Used by api-server.js for live result streaming.
+ *
+ * @param {object} config - Validated search config
+ * @param {object} programs - Programs with bonuses applied
+ * @param {object} callbacks - Streaming callbacks
+ * @param {function} callbacks.onProgress - Progress updates
+ * @param {function} callbacks.onPartial - Seats.aero results ready (partial combos)
+ * @param {function} callbacks.onUpdate - point.me date completed (re-scored combos)
+ * @param {function} callbacks.onError - Agent error
+ * @param {function} callbacks.shouldAbort - Returns true to abort
+ * @returns {{ scored, nearMisses, totalRecords }}
+ */
+export async function runSearchStreaming(config, programs, callbacks) {
+  let accumulatedPointme = [];
+  let seatsComplete = false;
+  let seatsResults = [];
+
+  const coreCallbacks = {
+    onProgress: callbacks.onProgress,
+    shouldAbort: callbacks.shouldAbort,
+    onError: callbacks.onError,
+    onDateComplete: (records) => {
+      accumulatedPointme.push(...records);
+      if (seatsComplete && callbacks.onUpdate) {
+        // Re-merge and re-score with accumulated point.me data
+        const { scored } = mergeScoreAndSort(seatsResults, accumulatedPointme, config, programs);
+        callbacks.onUpdate(scored, accumulatedPointme.length);
+      }
+    },
+  };
+
+  // Run both agents. Seats.aero resolves first (~30s), point.me streams over ~20min.
+  const seatsPromise = searchSeatsAero(config, programs).then((results) => {
+    seatsResults = results;
+    seatsComplete = true;
+    console.log(`[search] Seats.aero complete: ${results.length} records`);
+
+    if (callbacks.onPartial) {
+      const { scored } = mergeScoreAndSort(results, accumulatedPointme, config, programs);
+      callbacks.onPartial(scored, results.length);
+    }
+    return results;
+  }).catch((err) => {
+    console.error(`[search] ERROR: Seats.aero sweep failed: ${err.message}`);
+    if (callbacks.onError) callbacks.onError({ agent: 'seats_aero', error: err.message });
+    seatsComplete = true;
+    return [];
+  });
+
+  const pointmePromise = searchPointMe(config, coreCallbacks).catch((err) => {
+    console.error(`[search] ERROR: point.me sweep failed: ${err.message}`);
+    if (callbacks.onError) callbacks.onError({ agent: 'pointme', error: err.message });
+    return [];
+  });
+
+  const [finalSeats, finalPointme] = await Promise.all([seatsPromise, pointmePromise]);
+
+  const totalRecords = finalSeats.length + finalPointme.length;
+  if (totalRecords === 0) {
+    throw new Error('Both agents returned zero results. Nothing to process.');
+  }
+
+  // Final merge + score
+  const { scored, nearMisses } = mergeScoreAndSort(finalSeats, finalPointme, config, programs);
+
+  return { scored, nearMisses, totalRecords };
+}
+
+// ─── CLI Entry Point ────────────────────────────────────────────────────
 
 async function main() {
   const startTime = Date.now();
@@ -314,7 +390,13 @@ async function main() {
   console.log(`\n[search] Done in ${elapsed}s`);
 }
 
-main().catch((err) => {
-  console.error(`[search] FATAL: ${err.message}`);
-  process.exit(1);
-});
+// Only run main when executed directly (not imported)
+const isDirectRun = process.argv[1] && (
+  process.argv[1].endsWith('/search.js') || process.argv[1].endsWith('\\search.js')
+);
+if (isDirectRun) {
+  main().catch((err) => {
+    console.error(`[search] FATAL: ${err.message}`);
+    process.exit(1);
+  });
+}

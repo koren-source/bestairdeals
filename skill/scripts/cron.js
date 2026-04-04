@@ -7,7 +7,8 @@
  */
 
 import "dotenv/config";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 import { buildCombos, buildNearMisses } from "./combo.js";
 import { scoreCombo, buildSummary } from "./score.js";
 import { PROGRAMS } from "./programs.js";
@@ -16,6 +17,7 @@ import { writeHistory } from "./history.js";
 import { compareWithHistory } from "./compare.js";
 import { notify, buildNotifyMessage } from "./notify.js";
 import { detectBonuses } from "./bonus-detect.js";
+import { startBrowseDaemon, waitForBrowseServer, stopBrowseDaemon } from "./browse-daemon.js";
 
 async function main() {
   const startTime = Date.now();
@@ -27,6 +29,17 @@ async function main() {
   } catch (err) {
     console.error(`[cron] Failed to read trip.json: ${err.message}`);
     await notify(`bestairdeals CRON FAILURE: Could not read trip.json — ${err.message}`, {});
+    process.exit(1);
+  }
+
+  // 0. Ensure browse daemon is running (required for cash prices)
+  let browseChild = null;
+  try {
+    browseChild = startBrowseDaemon();
+    if (browseChild) await waitForBrowseServer();
+  } catch (err) {
+    console.error(`[cron] Browse daemon failed: ${err.message}`);
+    await notify(`bestairdeals CRON FAILURE: ${err.message}`, config);
     process.exit(1);
   }
 
@@ -112,6 +125,8 @@ async function main() {
     );
 
     process.exit(1);
+  } finally {
+    stopBrowseDaemon(browseChild);
   }
 }
 

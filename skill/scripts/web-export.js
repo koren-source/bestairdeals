@@ -12,6 +12,7 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { MR_VALUE_USD } from "./programs.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = join(__dirname, "..", "..", "web");
@@ -58,7 +59,8 @@ export function writeWebData(scored, nearMisses, config, programs) {
       total_fees: c.total_fees,
       score: c.score,
       flags: c.flags || [],
-      award_cost_usd: c.award_cost_usd ?? +((c.total_pts * 0.02 + c.total_fees).toFixed(2)),
+      source_tag: c.source_tag || null,
+      award_cost_usd: c.award_cost_usd ?? +((c.total_pts * MR_VALUE_USD + c.total_fees).toFixed(2)),
       cash_price_usd: c.cash_price_usd ?? null,
       value_ratio: c.value_ratio ?? null,
       verdict: c.verdict ?? null,

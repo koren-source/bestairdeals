@@ -3,3 +3,5 @@ output/
 .env
 *.log
 .gstack/
+web/config.js
+.vercel

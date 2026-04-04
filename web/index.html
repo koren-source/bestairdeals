@@ -301,6 +301,74 @@
     font-family: ui-monospace, monospace;
   }
 
+  /* Next 12 deals compact list */
+  .next-deals-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 8px;
+  }
+  .next-deal-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #1A1D27;
+    border: 1px solid #2A2D37;
+    border-radius: 8px;
+    padding: 10px 14px;
+    transition: border-color 0.15s;
+  }
+  .next-deal-row:hover { border-color: #3B82F6; }
+  .next-deal-rank {
+    font-size: 14px;
+    font-weight: 700;
+    color: #3B82F6;
+    font-family: ui-monospace, monospace;
+    min-width: 28px;
+  }
+  .next-deal-info { flex: 1; min-width: 0; }
+  .next-deal-route {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .next-deal-meta {
+    font-size: 11px;
+    color: #71717A;
+    font-family: ui-monospace, monospace;
+  }
+  .next-deal-points {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: ui-monospace, monospace;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .next-deal-fees {
+    font-size: 11px;
+    color: #71717A;
+    font-family: ui-monospace, monospace;
+    text-align: right;
+  }
+
+  /* Heatmap legend */
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #71717A;
+  }
+  .legend-label { font-weight: 500; }
+  .legend-gradient {
+    width: 200px;
+    height: 12px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #15803d, #22c55e, #a3e635, #facc15, #f97316, #ef4444);
+  }
+
   /* Heatmap */
   .heatmap-container {
     overflow-x: auto;
@@ -381,6 +449,437 @@
   .reason-date { background: #F59E0B20; color: #F59E0B; }
   .reason-seats { background: #EF444420; color: #EF4444; }
 
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 24px;
+    background: #161820;
+    border-bottom: 1px solid #2A2D37;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+  }
+  .status-dot.online { background: #22C55E; }
+  .status-dot.offline { background: #EF4444; }
+  .status-item { color: #71717A; }
+  .status-item .val { color: #E4E4E7; }
+
+  /* Search form */
+  .search-form {
+    padding: 20px 24px;
+    background: #1A1D27;
+    border-bottom: 1px solid #2A2D37;
+  }
+  .search-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    max-width: 900px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-label {
+    font-size: 11px;
+    color: #71717A;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .form-input {
+    background: #0F1117;
+    border: 1px solid #2A2D37;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #E4E4E7;
+    font-size: 13px;
+    font-family: ui-monospace, monospace;
+  }
+  .form-input:focus { outline: none; border-color: #3B82F6; }
+
+  /* Autocomplete */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #1A1D27;
+    border: 1px solid #3B82F6;
+    border-radius: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    display: none;
+  }
+  .autocomplete-dropdown.open { display: block; }
+  .autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .autocomplete-item:hover,
+  .autocomplete-item.active {
+    background: #3B82F620;
+  }
+  .autocomplete-item .ac-code {
+    font-weight: 700;
+    color: #3B82F6;
+    font-family: ui-monospace, monospace;
+    min-width: 36px;
+  }
+  .autocomplete-item .ac-city { color: #E4E4E7; }
+  .autocomplete-item .ac-name { color: #71717A; font-size: 11px; }
+  .airport-label {
+    font-size: 11px;
+    color: #71717A;
+    margin-top: 2px;
+    min-height: 16px;
+  }
+  .autocomplete-empty {
+    padding: 8px 12px;
+    color: #71717A;
+    font-size: 12px;
+  }
+
+  /* Cabin checkboxes */
+  .cabin-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+  .cabin-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #E4E4E7;
+    cursor: pointer;
+  }
+
+  /* Comparison view */
+  .comparison-section {
+    background: #1A1D27;
+    border: 1px solid #2A2D37;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    display: none;
+  }
+  .comparison-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .comparison-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #E4E4E7;
+  }
+  .threshold-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #71717A;
+  }
+  .threshold-input input {
+    width: 48px;
+    background: #0F1117;
+    border: 1px solid #2A2D37;
+    border-radius: 4px;
+    padding: 4px 6px;
+    color: #E4E4E7;
+    font-size: 12px;
+    text-align: center;
+    font-family: ui-monospace, monospace;
+  }
+  .comparison-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .comparison-card {
+    background: #0F1117;
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .comparison-card h4 {
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #71717A;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+  }
+  .comparison-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 0;
+  }
+  .comparison-stat .label { color: #71717A; }
+  .comparison-stat .value { color: #E4E4E7; font-family: ui-monospace, monospace; }
+  .upgrade-alert {
+    background: #0F1117;
+    border-radius: 8px;
+    padding: 16px;
+    border-left: 3px solid #3B82F6;
+  }
+  .upgrade-alert.worth-it { border-left-color: #22C55E; }
+  .upgrade-alert.marginal { border-left-color: #F59E0B; }
+  .upgrade-alert.not-worth { border-left-color: #EF4444; }
+  .upgrade-alert h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .upgrade-alert p {
+    font-size: 13px;
+    color: #A1A1AA;
+    line-height: 1.6;
+  }
+  .upgrade-alert .highlight { color: #E4E4E7; font-weight: 600; }
+  .upgrade-verdict {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+  .upgrade-verdict.good { background: #22C55E20; color: #22C55E; }
+  .upgrade-verdict.meh { background: #F59E0B20; color: #F59E0B; }
+  .upgrade-verdict.bad { background: #EF444420; color: #EF4444; }
+
+  /* Calendar date picker */
+  .cal-wrap { position: relative; }
+  .cal-trigger {
+    cursor: pointer;
+    background: #0F1117;
+    border: 1px solid #2A2D37;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #E4E4E7;
+    font-size: 13px;
+    font-family: ui-monospace, monospace;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .cal-trigger:hover { border-color: #3B82F6; }
+  .cal-trigger .cal-icon { color: #71717A; font-size: 14px; }
+  .cal-trigger .cal-placeholder { color: #52525B; }
+  .cal-popup {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    background: #1A1D27;
+    border: 1px solid #3B82F6;
+    border-radius: 10px;
+    padding: 12px;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    display: none;
+    min-width: 280px;
+  }
+  .cal-popup.open { display: block; }
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .cal-header button {
+    background: none;
+    border: 1px solid #2A2D37;
+    border-radius: 6px;
+    color: #E4E4E7;
+    cursor: pointer;
+    padding: 4px 10px;
+    font-size: 14px;
+  }
+  .cal-header button:hover { border-color: #3B82F6; color: #3B82F6; }
+  .cal-month-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #E4E4E7;
+  }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .cal-dow {
+    text-align: center;
+    font-size: 10px;
+    color: #52525B;
+    padding: 4px 0;
+    text-transform: uppercase;
+  }
+  .cal-day {
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #A1A1AA;
+    transition: background 0.1s;
+  }
+  .cal-day:hover { background: #3B82F620; color: #E4E4E7; }
+  .cal-day.today { color: #3B82F6; font-weight: 700; }
+  .cal-day.selected { background: #3B82F6; color: #fff; font-weight: 700; }
+  .cal-day.other-month { color: #2A2D37; }
+  .cal-day.other-month:hover { background: transparent; cursor: default; }
+  .cal-quick {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #2A2D37;
+  }
+  .cal-quick button {
+    flex: 1;
+    background: #0F1117;
+    border: 1px solid #2A2D37;
+    border-radius: 6px;
+    color: #A1A1AA;
+    font-size: 11px;
+    padding: 5px 4px;
+    cursor: pointer;
+  }
+  .cal-quick button:hover { border-color: #3B82F6; color: #3B82F6; }
+
+  /* Heatmap cabin toggle */
+  .heatmap-cabin-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .heatmap-cabin-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #E4E4E7;
+    cursor: pointer;
+  }
+
+  .form-select {
+    background: #0F1117;
+    border: 1px solid #2A2D37;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #E4E4E7;
+    font-size: 13px;
+    font-family: ui-monospace, monospace;
+    cursor: pointer;
+  }
+
+  .date-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+    align-items: center;
+  }
+  .date-mode-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #E4E4E7;
+    cursor: pointer;
+  }
+
+  .exact-fields, .flex-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    max-width: 900px;
+    margin-top: 8px;
+  }
+
+  .search-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    align-items: center;
+  }
+  .btn-search {
+    background: #3B82F6;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-search:hover { opacity: 0.85; }
+  .btn-search:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-abort {
+    background: #EF444420;
+    color: #EF4444;
+    border: 1px solid #EF444440;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: none;
+  }
+  .search-progress {
+    font-size: 12px;
+    color: #71717A;
+    font-family: ui-monospace, monospace;
+    margin-left: 8px;
+  }
+
+  /* Search history */
+  .history-section {
+    margin-top: 24px;
+  }
+  .history-card {
+    background: #1A1D27;
+    border: 1px solid #2A2D37;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+  }
+  .history-card:hover { border-color: #3B82F640; }
+  .history-info { color: #E4E4E7; }
+  .history-meta { color: #71717A; }
+  .btn-rerun {
+    background: #3B82F620;
+    color: #3B82F6;
+    border: 1px solid #3B82F640;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-rerun:hover { background: #3B82F640; }
+
   /* Footer */
   .footer {
     text-align: center;
@@ -449,6 +948,125 @@
   <div class="header-stats" id="headerStats">Loading...</div>
 </div>
 
+<!-- Status bar -->
+<div class="status-bar" id="statusBar">
+  <span class="status-item"><span class="status-dot offline" id="miniDot"></span>Mini: <span class="val" id="miniStatus">Checking...</span></span>
+  <span class="status-item">Browse: <span class="val" id="browseStatus">...</span></span>
+  <span class="status-item">Last search: <span class="val" id="lastSearchTime">...</span></span>
+</div>
+
+<!-- Search form -->
+<div class="search-form" id="searchForm">
+  <div class="search-form-grid">
+    <div class="form-group">
+      <label class="form-label">From</label>
+      <div class="autocomplete-wrap">
+        <input type="text" class="form-input" id="sfOrigin" placeholder="LAS" maxlength="3" autocomplete="off">
+        <div class="autocomplete-dropdown" id="acOriginDrop"></div>
+      </div>
+      <div class="airport-label" id="acOriginLabel"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">To (comma-sep)</label>
+      <div class="autocomplete-wrap">
+        <input type="text" class="form-input" id="sfDest" placeholder="LHR, LGW" autocomplete="off">
+        <div class="autocomplete-dropdown" id="acDestDrop"></div>
+      </div>
+      <div class="airport-label" id="acDestLabel"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cabin (max 2)</label>
+      <div class="cabin-checkboxes" id="cabinCheckboxes">
+        <label><input type="checkbox" name="cabin" value="economy" checked> Economy</label>
+        <label><input type="checkbox" name="cabin" value="premium"> Premium</label>
+        <label><input type="checkbox" name="cabin" value="business"> Business</label>
+        <label><input type="checkbox" name="cabin" value="first"> First</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pax</label>
+      <input type="number" class="form-input" id="sfPax" min="1" max="9" value="2">
+    </div>
+  </div>
+
+  <div class="date-mode-toggle">
+    <label><input type="radio" name="dateMode" value="exact" checked> Exact</label>
+    <label><input type="radio" name="dateMode" value="flex"> Flexible</label>
+  </div>
+
+  <div class="exact-fields" id="exactFields">
+    <div class="form-group">
+      <label class="form-label">Outbound Start</label>
+      <div class="cal-wrap">
+        <button type="button" class="cal-trigger" id="sfOutStart" data-value="">
+          <span class="cal-placeholder">Pick date</span>
+          <span class="cal-icon">&#128197;</span>
+        </button>
+        <div class="cal-popup" id="calOutStart"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Outbound End</label>
+      <div class="cal-wrap">
+        <button type="button" class="cal-trigger" id="sfOutEnd" data-value="">
+          <span class="cal-placeholder">Pick date</span>
+          <span class="cal-icon">&#128197;</span>
+        </button>
+        <div class="cal-popup" id="calOutEnd"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Return Start</label>
+      <div class="cal-wrap">
+        <button type="button" class="cal-trigger" id="sfRetStart" data-value="">
+          <span class="cal-placeholder">Pick date</span>
+          <span class="cal-icon">&#128197;</span>
+        </button>
+        <div class="cal-popup" id="calRetStart"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Return End</label>
+      <div class="cal-wrap">
+        <button type="button" class="cal-trigger" id="sfRetEnd" data-value="">
+          <span class="cal-placeholder">Pick date</span>
+          <span class="cal-icon">&#128197;</span>
+        </button>
+        <div class="cal-popup" id="calRetEnd"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Min Days</label>
+      <input type="number" class="form-input" id="sfMinDays" min="1" value="19">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Max Days</label>
+      <input type="number" class="form-input" id="sfMaxDays" min="1" value="23">
+    </div>
+  </div>
+
+  <div class="flex-fields" id="flexFields" style="display:none">
+    <div class="form-group">
+      <label class="form-label">Month</label>
+      <input type="month" class="form-input" id="sfMonth">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Min Days</label>
+      <input type="number" class="form-input" id="sfFlexMinDays" min="1" value="19">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Max Days</label>
+      <input type="number" class="form-input" id="sfFlexMaxDays" min="1" value="23">
+    </div>
+  </div>
+
+  <div class="search-actions">
+    <button class="btn-search" id="btnSearch">Search</button>
+    <button class="btn-abort" id="btnAbort">Abort</button>
+    <span class="search-progress" id="searchProgress"></span>
+  </div>
+</div>
+
 <!-- Config bar -->
 <div class="config-bar" id="configBar"></div>
 
@@ -469,8 +1087,35 @@
   <!-- Main content (hidden until data loads) -->
   <div id="mainContent" style="display:none">
     <!-- Top 3 Deals -->
-    <div class="section-title" id="topDealsTitle" style="display:none">Top Deals</div>
+    <div class="section-title" id="topDealsTitle" style="display:none">Top 3 Deals</div>
     <div class="deals-grid" id="dealsGrid"></div>
+
+    <!-- Next 12 Deals -->
+    <div class="section-title" id="next12Title" style="display:none">Next Best Deals</div>
+    <div class="next-deals-list" id="next12List"></div>
+
+    <!-- Cabin Comparison -->
+    <div class="comparison-section" id="comparisonSection">
+      <div class="comparison-header">
+        <h3>Cabin Comparison</h3>
+        <div class="threshold-input">
+          Alert when upgrade &lt; <input type="number" id="upgradeThreshold" value="40" min="0" max="100"> % more points
+        </div>
+      </div>
+      <div class="comparison-cards" id="comparisonCards"></div>
+      <div id="upgradeAlertWrap"></div>
+    </div>
+
+    <!-- Date Heatmap -->
+    <div id="heatmapCabinToggle" class="heatmap-cabin-toggle" style="display:none"></div>
+    <div class="section-title" id="heatmapTitle" style="display:none">Points Heatmap (Best MR Points by Date Pair)</div>
+    <div class="heatmap-container" id="heatmapContainer"></div>
+    <div class="heatmap-legend" id="heatmapLegend" style="display:none">
+      <span class="legend-label">Best</span>
+      <div class="legend-gradient"></div>
+      <span class="legend-label">Worst</span>
+    </div>
+    <div class="heatmap-tooltip" id="heatmapTooltip"></div>
 
     <!-- Filter bar -->
     <div class="filter-bar" id="filterBar">
@@ -522,17 +1167,13 @@
             <th data-col="value">Value</th>
             <th data-col="verdict">Verdict</th>
             <th data-col="stops">Stops</th>
+            <th data-col="source">Source</th>
           </tr>
         </thead>
         <tbody id="resultsBody">
         </tbody>
       </table>
     </div>
-
-    <!-- Date Heatmap -->
-    <div class="section-title">Date Heatmap (Score by Date Pair)</div>
-    <div class="heatmap-container" id="heatmapContainer"></div>
-    <div class="heatmap-tooltip" id="heatmapTooltip"></div>
 
     <!-- Near Misses -->
     <div class="section-title" id="nearMissTitle" style="display:none">Near Misses</div>
@@ -554,13 +1195,996 @@
       </table>
     </div>
 
+    <!-- Search History -->
+    <div class="history-section" id="historySection" style="display:none">
+      <div class="section-title">Recent Searches</div>
+      <div id="historyList"></div>
+    </div>
+
     <div class="footer" id="footer"></div>
   </div>
 </div>
 
+<script src="config.js" onerror="window.BESTAIRDEALS_CONFIG={}"></script>
 <script>
 var DATA = null;
 var AMEX_TRANSFER_URL = 'https://global.americanexpress.com/rewards/transfer';
+
+// --- API Config ---
+var CFG = (typeof window.BESTAIRDEALS_CONFIG !== 'undefined') ? window.BESTAIRDEALS_CONFIG : {};
+var API_URL = CFG.apiUrl || 'http://localhost:3001';
+var API_TOKEN = CFG.apiToken || '';
+
+// --- Search State ---
+var searchState = 'idle'; // idle, searching, partial, complete, error
+var searchReader = null;
+
+// --- API Helpers ---
+function apiHeaders() {
+  var h = { 'Content-Type': 'application/json' };
+  if (API_TOKEN) h['Authorization'] = 'Bearer ' + API_TOKEN;
+  return h;
+}
+
+// --- Status Polling ---
+function pollStatus() {
+  fetch(API_URL + '/status', { headers: apiHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(s) {
+      document.getElementById('miniDot').className = 'status-dot online';
+      document.getElementById('miniStatus').textContent = 'Online';
+      document.getElementById('browseStatus').textContent = s.browse_server === 'ready' ? 'Ready' : 'Not Running';
+      if (s.last_search) {
+        var ago = Math.round((Date.now() - new Date(s.last_search.completed_at || s.last_search.started_at).getTime()) / 60000);
+        document.getElementById('lastSearchTime').textContent = ago < 60 ? ago + 'm ago' : Math.round(ago / 60) + 'h ago';
+      } else {
+        document.getElementById('lastSearchTime').textContent = 'Never';
+      }
+      document.getElementById('btnSearch').disabled = (s.search && s.search.active) || false;
+    })
+    .catch(function() {
+      document.getElementById('miniDot').className = 'status-dot offline';
+      document.getElementById('miniStatus').textContent = 'Offline';
+      document.getElementById('browseStatus').textContent = '...';
+    });
+}
+setInterval(pollStatus, 30000);
+pollStatus();
+
+// --- Load Search History ---
+function escapeHtml(str) {
+  var d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function loadHistory() {
+  fetch(API_URL + '/history?limit=10', { headers: apiHeaders() })
+    .then(function(r) { return r.json(); })
+    .then(function(items) {
+      if (!items || items.length === 0) return;
+      document.getElementById('historySection').style.display = '';
+      var list = document.getElementById('historyList');
+      list.innerHTML = '';
+      items.forEach(function(item) {
+        var p = item.params || {};
+        var route = (p.origin || '?') + ' -> ' + (p.destinations ? p.destinations.join(', ') : '?');
+        var when = item.completed_at ? new Date(item.completed_at).toLocaleDateString() : '';
+        var card = document.createElement('div');
+        card.className = 'history-card';
+        var info = document.createElement('div');
+        var infoLine = document.createElement('div');
+        infoLine.className = 'history-info';
+        infoLine.textContent = route + ' | ' + (p.cabin || '') + ' | ' + (p.pax || '') + ' pax';
+        var metaLine = document.createElement('div');
+        metaLine.className = 'history-meta';
+        metaLine.textContent = when + ' | ' + (item.combo_count || 0) + ' combos | ' + (item.duration_s || 0) + 's';
+        info.appendChild(infoLine);
+        info.appendChild(metaLine);
+        var btn = document.createElement('button');
+        btn.className = 'btn-rerun';
+        btn.textContent = 'Re-run';
+        btn.addEventListener('click', rerunSearch.bind(null, item.params));
+        card.appendChild(info);
+        card.appendChild(btn);
+        list.appendChild(card);
+      });
+    })
+    .catch(function() { /* history unavailable */ });
+}
+loadHistory();
+
+function rerunSearch(params) {
+  fillFormFromParams(params);
+  startSearch();
+}
+
+// --- Date Mode Toggle ---
+document.querySelectorAll('input[name="dateMode"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    var isExact = this.value === 'exact';
+    document.getElementById('exactFields').style.display = isExact ? '' : 'none';
+    document.getElementById('flexFields').style.display = isExact ? 'none' : '';
+  });
+});
+
+// --- Airport Data ---
+var AIRPORTS = [
+  { code: "ATL", name: "Hartsfield-Jackson Atlanta International", city: "Atlanta", country: "US" },
+  { code: "LAX", name: "Los Angeles International", city: "Los Angeles", country: "US" },
+  { code: "ORD", name: "O'Hare International", city: "Chicago", country: "US" },
+  { code: "DFW", name: "Dallas/Fort Worth International", city: "Dallas", country: "US" },
+  { code: "DEN", name: "Denver International", city: "Denver", country: "US" },
+  { code: "JFK", name: "John F. Kennedy International", city: "New York", country: "US" },
+  { code: "SFO", name: "San Francisco International", city: "San Francisco", country: "US" },
+  { code: "SEA", name: "Seattle-Tacoma International", city: "Seattle", country: "US" },
+  { code: "LAS", name: "Harry Reid International", city: "Las Vegas", country: "US" },
+  { code: "MCO", name: "Orlando International", city: "Orlando", country: "US" },
+  { code: "CLT", name: "Charlotte Douglas International", city: "Charlotte", country: "US" },
+  { code: "PHX", name: "Phoenix Sky Harbor International", city: "Phoenix", country: "US" },
+  { code: "IAH", name: "George Bush Intercontinental", city: "Houston", country: "US" },
+  { code: "MIA", name: "Miami International", city: "Miami", country: "US" },
+  { code: "EWR", name: "Newark Liberty International", city: "Newark", country: "US" },
+  { code: "MSP", name: "Minneapolis-Saint Paul International", city: "Minneapolis", country: "US" },
+  { code: "BOS", name: "Logan International", city: "Boston", country: "US" },
+  { code: "DTW", name: "Detroit Metropolitan Wayne County", city: "Detroit", country: "US" },
+  { code: "FLL", name: "Fort Lauderdale-Hollywood International", city: "Fort Lauderdale", country: "US" },
+  { code: "PHL", name: "Philadelphia International", city: "Philadelphia", country: "US" },
+  { code: "BWI", name: "Baltimore/Washington International", city: "Baltimore", country: "US" },
+  { code: "SLC", name: "Salt Lake City International", city: "Salt Lake City", country: "US" },
+  { code: "DCA", name: "Ronald Reagan Washington National", city: "Washington", country: "US" },
+  { code: "IAD", name: "Washington Dulles International", city: "Washington", country: "US" },
+  { code: "SAN", name: "San Diego International", city: "San Diego", country: "US" },
+  { code: "TPA", name: "Tampa International", city: "Tampa", country: "US" },
+  { code: "HNL", name: "Daniel K. Inouye International", city: "Honolulu", country: "US" },
+  { code: "PDX", name: "Portland International", city: "Portland", country: "US" },
+  { code: "STL", name: "St. Louis Lambert International", city: "St. Louis", country: "US" },
+  { code: "AUS", name: "Austin-Bergstrom International", city: "Austin", country: "US" },
+  { code: "BNA", name: "Nashville International", city: "Nashville", country: "US" },
+  { code: "RDU", name: "Raleigh-Durham International", city: "Raleigh", country: "US" },
+  { code: "SJC", name: "Norman Y. Mineta San Jose International", city: "San Jose", country: "US" },
+  { code: "SMF", name: "Sacramento International", city: "Sacramento", country: "US" },
+  { code: "OAK", name: "Oakland International", city: "Oakland", country: "US" },
+  { code: "MDW", name: "Chicago Midway International", city: "Chicago", country: "US" },
+  { code: "DAL", name: "Dallas Love Field", city: "Dallas", country: "US" },
+  { code: "HOU", name: "William P. Hobby", city: "Houston", country: "US" },
+  { code: "SAT", name: "San Antonio International", city: "San Antonio", country: "US" },
+  { code: "PIT", name: "Pittsburgh International", city: "Pittsburgh", country: "US" },
+  { code: "CLE", name: "Cleveland Hopkins International", city: "Cleveland", country: "US" },
+  { code: "CMH", name: "John Glenn Columbus International", city: "Columbus", country: "US" },
+  { code: "CVG", name: "Cincinnati/Northern Kentucky International", city: "Cincinnati", country: "US" },
+  { code: "IND", name: "Indianapolis International", city: "Indianapolis", country: "US" },
+  { code: "MCI", name: "Kansas City International", city: "Kansas City", country: "US" },
+  { code: "MSY", name: "Louis Armstrong New Orleans International", city: "New Orleans", country: "US" },
+  { code: "JAX", name: "Jacksonville International", city: "Jacksonville", country: "US" },
+  { code: "ABQ", name: "Albuquerque International Sunport", city: "Albuquerque", country: "US" },
+  { code: "BUF", name: "Buffalo Niagara International", city: "Buffalo", country: "US" },
+  { code: "ANC", name: "Ted Stevens Anchorage International", city: "Anchorage", country: "US" },
+  { code: "LHR", name: "Heathrow", city: "London", country: "GB" },
+  { code: "LGW", name: "Gatwick", city: "London", country: "GB" },
+  { code: "STN", name: "Stansted", city: "London", country: "GB" },
+  { code: "CDG", name: "Charles de Gaulle", city: "Paris", country: "FR" },
+  { code: "ORY", name: "Orly", city: "Paris", country: "FR" },
+  { code: "AMS", name: "Amsterdam Airport Schiphol", city: "Amsterdam", country: "NL" },
+  { code: "FRA", name: "Frankfurt Airport", city: "Frankfurt", country: "DE" },
+  { code: "MUC", name: "Munich Airport", city: "Munich", country: "DE" },
+  { code: "ZRH", name: "Zurich Airport", city: "Zurich", country: "CH" },
+  { code: "BCN", name: "Josep Tarradellas Barcelona-El Prat", city: "Barcelona", country: "ES" },
+  { code: "MAD", name: "Adolfo Suarez Madrid-Barajas", city: "Madrid", country: "ES" },
+  { code: "FCO", name: "Leonardo da Vinci-Fiumicino", city: "Rome", country: "IT" },
+  { code: "MXP", name: "Milan Malpensa", city: "Milan", country: "IT" },
+  { code: "LIS", name: "Humberto Delgado Airport", city: "Lisbon", country: "PT" },
+  { code: "DUB", name: "Dublin Airport", city: "Dublin", country: "IE" },
+  { code: "CPH", name: "Copenhagen Airport", city: "Copenhagen", country: "DK" },
+  { code: "OSL", name: "Oslo Gardermoen", city: "Oslo", country: "NO" },
+  { code: "ARN", name: "Stockholm Arlanda", city: "Stockholm", country: "SE" },
+  { code: "HEL", name: "Helsinki-Vantaa", city: "Helsinki", country: "FI" },
+  { code: "VIE", name: "Vienna International", city: "Vienna", country: "AT" },
+  { code: "BRU", name: "Brussels Airport", city: "Brussels", country: "BE" },
+  { code: "WAW", name: "Warsaw Chopin", city: "Warsaw", country: "PL" },
+  { code: "PRG", name: "Vaclav Havel Airport Prague", city: "Prague", country: "CZ" },
+  { code: "ATH", name: "Athens International", city: "Athens", country: "GR" },
+  { code: "IST", name: "Istanbul Airport", city: "Istanbul", country: "TR" },
+  { code: "BUD", name: "Budapest Ferenc Liszt International", city: "Budapest", country: "HU" },
+  { code: "NRT", name: "Narita International", city: "Tokyo", country: "JP" },
+  { code: "HND", name: "Haneda Airport", city: "Tokyo", country: "JP" },
+  { code: "ICN", name: "Incheon International", city: "Seoul", country: "KR" },
+  { code: "PEK", name: "Beijing Capital International", city: "Beijing", country: "CN" },
+  { code: "PVG", name: "Shanghai Pudong International", city: "Shanghai", country: "CN" },
+  { code: "HKG", name: "Hong Kong International", city: "Hong Kong", country: "HK" },
+  { code: "SIN", name: "Singapore Changi", city: "Singapore", country: "SG" },
+  { code: "BKK", name: "Suvarnabhumi Airport", city: "Bangkok", country: "TH" },
+  { code: "KUL", name: "Kuala Lumpur International", city: "Kuala Lumpur", country: "MY" },
+  { code: "DEL", name: "Indira Gandhi International", city: "New Delhi", country: "IN" },
+  { code: "BOM", name: "Chhatrapati Shivaji Maharaj International", city: "Mumbai", country: "IN" },
+  { code: "TPE", name: "Taiwan Taoyuan International", city: "Taipei", country: "TW" },
+  { code: "MNL", name: "Ninoy Aquino International", city: "Manila", country: "PH" },
+  { code: "CGK", name: "Soekarno-Hatta International", city: "Jakarta", country: "ID" },
+  { code: "DXB", name: "Dubai International", city: "Dubai", country: "AE" },
+  { code: "DOH", name: "Hamad International", city: "Doha", country: "QA" },
+  { code: "AUH", name: "Abu Dhabi International", city: "Abu Dhabi", country: "AE" },
+  { code: "JNB", name: "O.R. Tambo International", city: "Johannesburg", country: "ZA" },
+  { code: "CAI", name: "Cairo International", city: "Cairo", country: "EG" },
+  { code: "CMN", name: "Mohammed V International", city: "Casablanca", country: "MA" },
+  { code: "GRU", name: "Sao Paulo/Guarulhos International", city: "Sao Paulo", country: "BR" },
+  { code: "GIG", name: "Rio de Janeiro/Galeao International", city: "Rio de Janeiro", country: "BR" },
+  { code: "MEX", name: "Mexico City International", city: "Mexico City", country: "MX" },
+  { code: "BOG", name: "El Dorado International", city: "Bogota", country: "CO" },
+  { code: "SCL", name: "Arturo Merino Benitez International", city: "Santiago", country: "CL" },
+  { code: "EZE", name: "Ministro Pistarini International", city: "Buenos Aires", country: "AR" },
+  { code: "LIM", name: "Jorge Chavez International", city: "Lima", country: "PE" },
+  { code: "PTY", name: "Tocumen International", city: "Panama City", country: "PA" },
+  { code: "CUN", name: "Cancun International", city: "Cancun", country: "MX" },
+  { code: "SYD", name: "Sydney Kingsford Smith", city: "Sydney", country: "AU" },
+  { code: "MEL", name: "Melbourne Airport", city: "Melbourne", country: "AU" },
+  { code: "AKL", name: "Auckland Airport", city: "Auckland", country: "NZ" },
+  { code: "BNE", name: "Brisbane Airport", city: "Brisbane", country: "AU" },
+  { code: "YYZ", name: "Toronto Pearson International", city: "Toronto", country: "CA" },
+  { code: "YVR", name: "Vancouver International", city: "Vancouver", country: "CA" },
+  { code: "YUL", name: "Montreal-Trudeau International", city: "Montreal", country: "CA" },
+  { code: "YYC", name: "Calgary International", city: "Calgary", country: "CA" },
+  { code: "YOW", name: "Ottawa Macdonald-Cartier International", city: "Ottawa", country: "CA" }
+];
+
+// Airport lookup by code
+var AIRPORT_MAP = {};
+AIRPORTS.forEach(function(a) { AIRPORT_MAP[a.code] = a; });
+
+function airportLabel(code) {
+  var a = AIRPORT_MAP[code];
+  return a ? a.city + ' (' + a.name + ')' : '';
+}
+
+// --- Autocomplete ---
+function setupAutocomplete(inputId, dropId, labelId, multiMode) {
+  var input = document.getElementById(inputId);
+  var drop = document.getElementById(dropId);
+  var label = document.getElementById(labelId);
+  var activeIdx = -1;
+  var matches = [];
+  var debounceTimer = null;
+
+  function getActiveSegment() {
+    if (!multiMode) return { text: input.value, start: 0, end: input.value.length };
+    var val = input.value;
+    var cursor = input.selectionStart || val.length;
+    var segments = val.split(',');
+    var pos = 0;
+    for (var i = 0; i < segments.length; i++) {
+      var segEnd = pos + segments[i].length;
+      if (cursor <= segEnd || i === segments.length - 1) {
+        return { text: segments[i].trim(), start: pos, end: segEnd, idx: i };
+      }
+      pos = segEnd + 1; // +1 for comma
+    }
+    return { text: val, start: 0, end: val.length };
+  }
+
+  function filterAirports(query) {
+    if (!query) return [];
+    var q = query.toLowerCase();
+    var results = [];
+    for (var i = 0; i < AIRPORTS.length && results.length < 8; i++) {
+      var a = AIRPORTS[i];
+      if (a.code.toLowerCase().indexOf(q) === 0 ||
+          a.city.toLowerCase().indexOf(q) === 0 ||
+          a.name.toLowerCase().indexOf(q) !== -1) {
+        results.push(a);
+      }
+    }
+    // Sort: exact code match first, then code prefix, then rest
+    results.sort(function(a, b) {
+      var aExact = a.code.toLowerCase() === q ? 0 : 1;
+      var bExact = b.code.toLowerCase() === q ? 0 : 1;
+      if (aExact !== bExact) return aExact - bExact;
+      var aCodeStart = a.code.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      var bCodeStart = b.code.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      return aCodeStart - bCodeStart;
+    });
+    return results;
+  }
+
+  function renderDropdown() {
+    if (matches.length === 0) {
+      var seg = getActiveSegment();
+      if (seg.text.length > 0) {
+        drop.innerHTML = '<div class="autocomplete-empty">No airports found</div>';
+        drop.classList.add('open');
+      } else {
+        drop.classList.remove('open');
+      }
+      return;
+    }
+    var html = '';
+    matches.forEach(function(a, i) {
+      html += '<div class="autocomplete-item' + (i === activeIdx ? ' active' : '') + '" data-code="' + a.code + '">'
+        + '<span class="ac-code">' + a.code + '</span>'
+        + '<span class="ac-city">' + a.city + ', ' + a.country + '</span>'
+        + '<span class="ac-name">' + a.name + '</span>'
+        + '</div>';
+    });
+    drop.innerHTML = html;
+    drop.classList.add('open');
+  }
+
+  function selectAirport(code) {
+    if (multiMode) {
+      var val = input.value;
+      var segments = val.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+      var seg = getActiveSegment();
+      segments[seg.idx !== undefined ? seg.idx : segments.length] = code;
+      input.value = segments.join(', ') + ', ';
+      updateMultiLabel();
+    } else {
+      input.value = code;
+      label.textContent = airportLabel(code);
+    }
+    drop.classList.remove('open');
+    activeIdx = -1;
+    input.focus();
+  }
+
+  function updateMultiLabel() {
+    if (!multiMode) return;
+    var codes = input.value.split(',').map(function(s) { return s.trim().toUpperCase(); }).filter(Boolean);
+    var labels = codes.map(function(c) { return airportLabel(c) || c; }).filter(Boolean);
+    label.textContent = labels.join(' | ');
+  }
+
+  input.addEventListener('keyup', function(e) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === 'Tab' || e.key === 'Escape') return;
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function() {
+      var seg = getActiveSegment();
+      matches = filterAirports(seg.text);
+      activeIdx = -1;
+      renderDropdown();
+      // Update label for single mode as user types
+      if (!multiMode) {
+        var code = input.value.trim().toUpperCase();
+        label.textContent = AIRPORT_MAP[code] ? airportLabel(code) : '';
+      } else {
+        updateMultiLabel();
+      }
+    }, 100);
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (!drop.classList.contains('open') || matches.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, matches.length - 1);
+      renderDropdown();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+      renderDropdown();
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      if (activeIdx >= 0 && activeIdx < matches.length) {
+        e.preventDefault();
+        selectAirport(matches[activeIdx].code);
+      }
+    } else if (e.key === 'Escape') {
+      drop.classList.remove('open');
+      activeIdx = -1;
+    }
+  });
+
+  // Use mousedown instead of click to fire before blur
+  drop.addEventListener('mousedown', function(e) {
+    e.preventDefault();
+    var item = e.target.closest('.autocomplete-item');
+    if (item) selectAirport(item.getAttribute('data-code'));
+  });
+
+  input.addEventListener('blur', function() {
+    setTimeout(function() { drop.classList.remove('open'); }, 150);
+  });
+
+  input.addEventListener('focus', function() {
+    var seg = getActiveSegment();
+    if (seg.text.length > 0) {
+      matches = filterAirports(seg.text);
+      if (matches.length > 0) renderDropdown();
+    }
+    // Resolve label on focus
+    if (!multiMode) {
+      var code = input.value.trim().toUpperCase();
+      if (AIRPORT_MAP[code]) label.textContent = airportLabel(code);
+    } else {
+      updateMultiLabel();
+    }
+  });
+}
+
+setupAutocomplete('sfOrigin', 'acOriginDrop', 'acOriginLabel', false);
+setupAutocomplete('sfDest', 'acDestDrop', 'acDestLabel', true);
+
+// --- Close dropdowns on outside click ---
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.autocomplete-wrap')) {
+    document.querySelectorAll('.autocomplete-dropdown').forEach(function(d) {
+      d.classList.remove('open');
+    });
+  }
+});
+
+// --- Calendar Date Picker ---
+function setupCalendar(triggerId, popupId) {
+  var trigger = document.getElementById(triggerId);
+  var popup = document.getElementById(popupId);
+  var viewYear, viewMonth; // currently displayed month
+  var selectedDate = null; // YYYY-MM-DD string
+
+  function today() {
+    var d = new Date();
+    return { y: d.getFullYear(), m: d.getMonth(), d: d.getDate() };
+  }
+
+  function init() {
+    var t = today();
+    viewYear = t.y;
+    viewMonth = t.m;
+  }
+  init();
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function formatDisplay(dateStr) {
+    if (!dateStr) return '';
+    var parts = dateStr.split('-');
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[parseInt(parts[1],10)-1] + ' ' + parseInt(parts[2],10) + ', ' + parts[0];
+  }
+
+  function render() {
+    var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    var dows = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+    var firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    var daysInPrev = new Date(viewYear, viewMonth, 0).getDate();
+
+    var t = today();
+    var todayStr = t.y + '-' + pad(t.m + 1) + '-' + pad(t.d);
+
+    var html = '<div class="cal-header">';
+    html += '<button type="button" data-nav="prev">&#8249;</button>';
+    html += '<span class="cal-month-label">' + months[viewMonth] + ' ' + viewYear + '</span>';
+    html += '<button type="button" data-nav="next">&#8250;</button>';
+    html += '</div>';
+
+    html += '<div class="cal-grid">';
+    dows.forEach(function(d) { html += '<div class="cal-dow">' + d + '</div>'; });
+
+    // Previous month trailing days
+    for (var i = firstDay - 1; i >= 0; i--) {
+      html += '<div class="cal-day other-month">' + (daysInPrev - i) + '</div>';
+    }
+
+    // Current month days
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateStr = viewYear + '-' + pad(viewMonth + 1) + '-' + pad(d);
+      var cls = 'cal-day';
+      if (dateStr === todayStr) cls += ' today';
+      if (dateStr === selectedDate) cls += ' selected';
+      html += '<div class="' + cls + '" data-date="' + dateStr + '">' + d + '</div>';
+    }
+
+    // Next month leading days
+    var totalCells = firstDay + daysInMonth;
+    var remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (var j = 1; j <= remaining; j++) {
+      html += '<div class="cal-day other-month">' + j + '</div>';
+    }
+    html += '</div>';
+
+    // Quick picks
+    html += '<div class="cal-quick">';
+    html += '<button type="button" data-quick="today">Today</button>';
+    html += '<button type="button" data-quick="+1m">+1 mo</button>';
+    html += '<button type="button" data-quick="+2m">+2 mo</button>';
+    html += '<button type="button" data-quick="+3m">+3 mo</button>';
+    html += '</div>';
+
+    popup.innerHTML = html;
+  }
+
+  function selectDate(dateStr) {
+    selectedDate = dateStr;
+    trigger.setAttribute('data-value', dateStr);
+    trigger.innerHTML = '<span>' + formatDisplay(dateStr) + '</span><span class="cal-icon">&#128197;</span>';
+    popup.classList.remove('open');
+    render();
+  }
+
+  // Getter for reading value (replaces .value on old date inputs)
+  trigger.getValue = function() { return trigger.getAttribute('data-value') || ''; };
+  trigger.setValue = function(v) {
+    if (v) {
+      selectedDate = v;
+      trigger.setAttribute('data-value', v);
+      trigger.innerHTML = '<span>' + formatDisplay(v) + '</span><span class="cal-icon">&#128197;</span>';
+      var parts = v.split('-');
+      viewYear = parseInt(parts[0], 10);
+      viewMonth = parseInt(parts[1], 10) - 1;
+    } else {
+      selectedDate = null;
+      trigger.setAttribute('data-value', '');
+      trigger.innerHTML = '<span class="cal-placeholder">Pick date</span><span class="cal-icon">&#128197;</span>';
+    }
+  };
+
+  trigger.addEventListener('click', function(e) {
+    e.stopPropagation();
+    // Close all other popups
+    document.querySelectorAll('.cal-popup.open').forEach(function(p) {
+      if (p !== popup) p.classList.remove('open');
+    });
+    if (popup.classList.contains('open')) {
+      popup.classList.remove('open');
+    } else {
+      render();
+      popup.classList.add('open');
+    }
+  });
+
+  popup.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var navBtn = e.target.closest('[data-nav]');
+    if (navBtn) {
+      if (navBtn.getAttribute('data-nav') === 'prev') {
+        viewMonth--;
+        if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      } else {
+        viewMonth++;
+        if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      }
+      render();
+      return;
+    }
+
+    var dayEl = e.target.closest('.cal-day:not(.other-month)');
+    if (dayEl && dayEl.getAttribute('data-date')) {
+      selectDate(dayEl.getAttribute('data-date'));
+      return;
+    }
+
+    var quickBtn = e.target.closest('[data-quick]');
+    if (quickBtn) {
+      var q = quickBtn.getAttribute('data-quick');
+      var d = new Date();
+      if (q === 'today') {
+        // use today
+      } else if (q === '+1m') {
+        d.setMonth(d.getMonth() + 1);
+      } else if (q === '+2m') {
+        d.setMonth(d.getMonth() + 2);
+      } else if (q === '+3m') {
+        d.setMonth(d.getMonth() + 3);
+      }
+      var ds = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+      viewYear = d.getFullYear();
+      viewMonth = d.getMonth();
+      selectDate(ds);
+    }
+  });
+}
+
+var calFields = ['sfOutStart', 'sfOutEnd', 'sfRetStart', 'sfRetEnd'];
+calFields.forEach(function(id) {
+  setupCalendar(id, 'cal' + id.replace('sf', ''));
+});
+
+// Close calendars on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.cal-wrap')) {
+    document.querySelectorAll('.cal-popup.open').forEach(function(p) {
+      p.classList.remove('open');
+    });
+  }
+});
+
+// --- Cabin Checkbox Logic (max 2) ---
+var cabinChecks = document.querySelectorAll('#cabinCheckboxes input[name="cabin"]');
+var cabinCheckOrder = ['economy']; // track check order for FIFO unchecking
+
+cabinChecks.forEach(function(cb) {
+  cb.addEventListener('change', function() {
+    if (this.checked) {
+      cabinCheckOrder.push(this.value);
+      // Enforce max 2
+      if (cabinCheckOrder.length > 2) {
+        var oldest = cabinCheckOrder.shift();
+        cabinChecks.forEach(function(c) {
+          if (c.value === oldest) c.checked = false;
+        });
+      }
+    } else {
+      cabinCheckOrder = cabinCheckOrder.filter(function(v) { return v !== cb.value; });
+    }
+    // Ensure at least 1 checked
+    var anyChecked = false;
+    cabinChecks.forEach(function(c) { if (c.checked) anyChecked = true; });
+    if (!anyChecked) {
+      this.checked = true;
+      cabinCheckOrder.push(this.value);
+    }
+  });
+});
+
+function getSelectedCabins() {
+  var cabins = [];
+  cabinChecks.forEach(function(c) { if (c.checked) cabins.push(c.value); });
+  return cabins;
+}
+
+// --- Multi-cabin state ---
+var CABIN_DATA = {};
+var activeCabins = [];
+var currentViewCabin = null;
+
+// --- Build Search Params ---
+function buildParams() {
+  var mode = document.querySelector('input[name="dateMode"]:checked').value;
+  var origin = document.getElementById('sfOrigin').value.trim().toUpperCase();
+  var dests = document.getElementById('sfDest').value.split(',').map(function(d) { return d.trim().toUpperCase(); }).filter(Boolean);
+  var cabins = getSelectedCabins();
+  var cabin = cabins[0]; // primary cabin for single-cabin compat
+  var pax = parseInt(document.getElementById('sfPax').value, 10) || 1;
+
+  var params = { origin: origin, destinations: dests, cabin: cabin, pax: pax, mode: mode };
+
+  if (mode === 'exact') {
+    params.outbound = {
+      start: document.getElementById('sfOutStart').getValue(),
+      end: document.getElementById('sfOutEnd').getValue(),
+    };
+    params['return'] = {
+      start: document.getElementById('sfRetStart').getValue(),
+      end: document.getElementById('sfRetEnd').getValue(),
+    };
+    params.trip_length = {
+      min: parseInt(document.getElementById('sfMinDays').value, 10),
+      max: parseInt(document.getElementById('sfMaxDays').value, 10),
+    };
+  } else {
+    params.outbound = { month: document.getElementById('sfMonth').value };
+    params.trip_length = {
+      min: parseInt(document.getElementById('sfFlexMinDays').value, 10),
+      max: parseInt(document.getElementById('sfFlexMaxDays').value, 10),
+    };
+  }
+  return params;
+}
+
+// --- Fill Form from Params (for re-run and URL params) ---
+function fillFormFromParams(p) {
+  if (p.origin) {
+    document.getElementById('sfOrigin').value = p.origin;
+    var ol = document.getElementById('acOriginLabel');
+    if (ol) ol.textContent = airportLabel(p.origin) || '';
+  }
+  if (p.destinations) {
+    document.getElementById('sfDest').value = p.destinations.join(', ');
+    var dl = document.getElementById('acDestLabel');
+    if (dl) dl.textContent = p.destinations.map(function(c) { return airportLabel(c) || c; }).join(' | ');
+  }
+  if (p.cabin) {
+    cabinChecks.forEach(function(c) { c.checked = (c.value === p.cabin); });
+    cabinCheckOrder = [p.cabin];
+  }
+  if (p.pax) document.getElementById('sfPax').value = p.pax;
+
+  if (p.mode === 'flex') {
+    document.querySelector('input[name="dateMode"][value="flex"]').checked = true;
+    document.getElementById('exactFields').style.display = 'none';
+    document.getElementById('flexFields').style.display = '';
+    if (p.outbound && p.outbound.month) document.getElementById('sfMonth').value = p.outbound.month;
+    if (p.trip_length) {
+      document.getElementById('sfFlexMinDays').value = p.trip_length.min;
+      document.getElementById('sfFlexMaxDays').value = p.trip_length.max;
+    }
+  } else {
+    document.querySelector('input[name="dateMode"][value="exact"]').checked = true;
+    document.getElementById('exactFields').style.display = '';
+    document.getElementById('flexFields').style.display = 'none';
+    if (p.outbound) {
+      document.getElementById('sfOutStart').setValue(p.outbound.start || '');
+      document.getElementById('sfOutEnd').setValue(p.outbound.end || '');
+    }
+    if (p['return']) {
+      document.getElementById('sfRetStart').setValue(p['return'].start || '');
+      document.getElementById('sfRetEnd').setValue(p['return'].end || '');
+    }
+    if (p.trip_length) {
+      document.getElementById('sfMinDays').value = p.trip_length.min;
+      document.getElementById('sfMaxDays').value = p.trip_length.max;
+    }
+  }
+}
+
+// --- URL Params ---
+function loadUrlParams() {
+  var sp = new URLSearchParams(window.location.search);
+  if (!sp.has('origin')) return;
+  var p = {
+    origin: sp.get('origin') || '',
+    destinations: (sp.get('destinations') || '').split(',').filter(Boolean),
+    cabin: sp.get('cabin') || 'economy',
+    pax: parseInt(sp.get('pax') || '1', 10),
+    mode: sp.get('mode') || 'exact',
+  };
+  if (p.mode === 'flex') {
+    p.outbound = { month: sp.get('month') || '' };
+    p.trip_length = { min: parseInt(sp.get('min') || '19', 10), max: parseInt(sp.get('max') || '23', 10) };
+  } else {
+    p.outbound = { start: sp.get('outStart') || '', end: sp.get('outEnd') || '' };
+    p['return'] = { start: sp.get('retStart') || '', end: sp.get('retEnd') || '' };
+    p.trip_length = { min: parseInt(sp.get('min') || '19', 10), max: parseInt(sp.get('max') || '23', 10) };
+  }
+  fillFormFromParams(p);
+}
+loadUrlParams();
+
+function updateUrlParams(params) {
+  var sp = new URLSearchParams();
+  sp.set('origin', params.origin);
+  sp.set('destinations', params.destinations.join(','));
+  sp.set('cabin', params.cabin);
+  sp.set('pax', params.pax);
+  sp.set('mode', params.mode);
+  if (params.mode === 'flex') {
+    sp.set('month', params.outbound.month);
+  } else {
+    sp.set('outStart', params.outbound.start);
+    sp.set('outEnd', params.outbound.end);
+    sp.set('retStart', params['return'].start);
+    sp.set('retEnd', params['return'].end);
+  }
+  sp.set('min', params.trip_length.min);
+  sp.set('max', params.trip_length.max);
+  history.replaceState(null, '', '?' + sp.toString());
+}
+
+// --- SSE Search ---
+function runSingleSearch(params) {
+  return new Promise(function(resolve, reject) {
+    var result = { scored: [], nearMisses: [], config: null, error: null };
+
+    fetch(API_URL + '/search', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(params),
+    }).then(function(res) {
+      if (res.status === 409) {
+        result.error = 'Another search is already running.';
+        resolve(result);
+        return;
+      }
+      if (res.status === 400) {
+        return res.json().then(function(d) {
+          result.error = d.error;
+          resolve(result);
+        });
+      }
+      if (!res.ok) {
+        result.error = 'HTTP ' + res.status;
+        resolve(result);
+        return;
+      }
+
+      var reader = res.body.getReader();
+      searchReader = reader;
+      var decoder = new TextDecoder();
+      var buffer = '';
+
+      function pump() {
+        reader.read().then(function(r) {
+          if (r.done) { resolve(result); return; }
+          buffer += decoder.decode(r.value, { stream: true });
+          var parts = buffer.split('\n\n');
+          buffer = parts.pop();
+          parts.forEach(function(chunk) {
+            var eventType = 'message';
+            var dataStr = '';
+            chunk.split('\n').forEach(function(line) {
+              if (line.startsWith('event: ')) eventType = line.slice(7);
+              else if (line.startsWith('data: ')) dataStr = line.slice(6);
+            });
+            if (!dataStr) return;
+            try {
+              var data = JSON.parse(dataStr);
+              handleSSE(eventType, data);
+              if (eventType === 'done' || eventType === 'partial' || eventType === 'update') {
+                if (data.combos) {
+                  data.combos.forEach(function(c, i) { c.rank = i + 1; });
+                  result.scored = data.combos;
+                }
+              }
+            } catch (e) { console.error('SSE parse error:', e); }
+          });
+          pump();
+        }).catch(function(err) {
+          console.error('SSE read error:', err);
+          resolve(result);
+        });
+      }
+      pump();
+    }).catch(function(err) {
+      result.error = 'Connection failed: ' + err.message;
+      resolve(result);
+    });
+  });
+}
+
+function startSearch() {
+  var params = buildParams();
+  if (!params.origin || params.destinations.length === 0) {
+    alert('Fill in origin and destination(s)');
+    return;
+  }
+
+  var cabins = getSelectedCabins();
+  updateUrlParams(params);
+  searchState = 'searching';
+  document.getElementById('btnSearch').disabled = true;
+  document.getElementById('btnAbort').style.display = '';
+  document.getElementById('searchProgress').textContent = 'Starting search...';
+
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('errorState').style.display = 'none';
+  document.getElementById('mainContent').style.display = '';
+
+  // Reset multi-cabin state
+  CABIN_DATA = {};
+  activeCabins = cabins.slice();
+  currentViewCabin = cabins[0];
+  document.getElementById('comparisonSection').style.display = 'none';
+
+  if (cabins.length === 1) {
+    // Single cabin: original behavior
+    var singleParams = Object.assign({}, params, { cabin: cabins[0] });
+    runSingleSearch(singleParams).then(function(result) {
+      if (result.error) {
+        document.getElementById('searchProgress').textContent = 'Error: ' + result.error;
+      }
+      CABIN_DATA[cabins[0]] = result;
+      searchDone();
+      loadHistory();
+    });
+  } else {
+    // Multi-cabin: sequential with 1s delay
+    var cabinIdx = 0;
+    function runNext() {
+      if (cabinIdx >= cabins.length) {
+        searchDone();
+        loadHistory();
+        renderComparisonView();
+        renderHeatmapToggle();
+        return;
+      }
+      var cab = cabins[cabinIdx];
+      document.getElementById('searchProgress').textContent = 'Searching ' + cab + ' (' + (cabinIdx + 1) + '/' + cabins.length + ')...';
+      var cabParams = Object.assign({}, params, { cabin: cab });
+
+      runSingleSearch(cabParams).then(function(result) {
+        CABIN_DATA[cab] = result;
+        if (result.error) {
+          document.getElementById('searchProgress').textContent = cab + ' error: ' + result.error;
+        } else {
+          // Render this cabin's results immediately
+          currentViewCabin = cab;
+          updateLiveResults(result.scored);
+        }
+        cabinIdx++;
+        if (cabinIdx < cabins.length) {
+          document.getElementById('searchProgress').textContent = 'Waiting 1s before next cabin search...';
+          setTimeout(runNext, 1000);
+        } else {
+          runNext();
+        }
+      });
+    }
+    runNext();
+  }
+}
+
+function handleSSE(event, data) {
+  if (event === 'progress') {
+    var msg = data.agent === 'pointme' ? 'point.me' : 'seats.aero';
+    msg += ': ' + (data.dates_completed || '?') + '/' + (data.dates_total || '?') + ' dates';
+    if (data.message) msg += ' | ' + data.message;
+    document.getElementById('searchProgress').textContent = msg;
+  }
+  else if (event === 'partial') {
+    searchState = 'partial';
+    document.getElementById('searchProgress').textContent = 'Seats.aero done. ' + (data.total_combos || 0) + ' combos. Waiting for point.me...';
+    updateLiveResults(data.combos);
+  }
+  else if (event === 'update') {
+    document.getElementById('searchProgress').textContent = 'Updating: ' + (data.total_combos || 0) + ' combos (' + (data.pointme_records || 0) + ' point.me records)';
+    updateLiveResults(data.combos);
+  }
+  else if (event === 'done') {
+    searchState = 'complete';
+    document.getElementById('searchProgress').textContent = 'Done! ' + (data.total_combos || 0) + ' combos in ' + (data.duration_s || '?') + 's';
+    updateLiveResults(data.combos);
+    searchDone();
+    loadHistory();
+  }
+  else if (event === 'error') {
+    if (!data.recoverable) {
+      searchState = 'error';
+      document.getElementById('searchProgress').textContent = 'Error: ' + data.message;
+      searchDone();
+    } else {
+      document.getElementById('searchProgress').textContent = 'Warning: ' + data.agent + ' error: ' + data.message;
+    }
+  }
+}
+
+function updateLiveResults(combos) {
+  if (!combos || combos.length === 0) return;
+
+  // Inject rank
+  combos.forEach(function(c, i) { c.rank = i + 1; });
+
+  // Build minimal DATA for render functions
+  var params = buildParams();
+  if (!DATA) {
+    DATA = {
+      scored: combos,
+      nearMisses: [],
+      config: {
+        origin: params.origin,
+        destinations: params.destinations,
+        cabin: params.cabin,
+        pax: params.pax,
+        outbound: params.outbound || {},
+        'return': params['return'] || {},
+        trip_length: params.trip_length || {},
+      },
+      programs: {},
+      timestamp: new Date().toLocaleString(),
+    };
+  } else {
+    DATA.scored = combos;
+    DATA.timestamp = new Date().toLocaleString();
+  }
+
+  // Pull program names from combo data
+  combos.forEach(function(c) {
+    if (c.outbound && c.outbound.program && !DATA.programs[c.outbound.program]) {
+      DATA.programs[c.outbound.program] = { name: c.outbound.program };
+    }
+    if (c['return'] && c['return'].program && !DATA.programs[c['return'].program]) {
+      DATA.programs[c['return'].program] = { name: c['return'].program };
+    }
+  });
+
+  renderTopDeals();
+  renderTable();
+  renderHeatmap();
+}
+
+function searchDone() {
+  document.getElementById('btnSearch').disabled = false;
+  document.getElementById('btnAbort').style.display = 'none';
+  searchReader = null;
+}
+
+// --- Abort ---
+document.getElementById('btnAbort').addEventListener('click', function() {
+  fetch(API_URL + '/search', { method: 'DELETE', headers: apiHeaders() })
+    .then(function() {
+      document.getElementById('searchProgress').textContent = 'Aborting...';
+    })
+    .catch(function() {});
+});
+
+// --- Search Button ---
+document.getElementById('btnSearch').addEventListener('click', startSearch);
 
 // --- Helpers ---
 function fmt(n) { return n != null ? n.toLocaleString('en-US') : ''; }
@@ -593,6 +2217,13 @@ function verdictBadge(v) {
   return '<span class="verdict-badge" style="background:' + c + '20;color:' + c + ';border:1px solid ' + c + '40">' + verdictLabel(v) + '</span>';
 }
 
+function sourceBadge(tag) {
+  if (!tag) return '<span style="color:#6B7280">—</span>';
+  var colors = { Both: '#10B981', Verified: '#3B82F6', API: '#F59E0B', PARTIAL: '#EF4444' };
+  var c = colors[tag] || '#6B7280';
+  return '<span style="background:' + c + '20;color:' + c + ';border:1px solid ' + c + '40;padding:2px 6px;border-radius:4px;font-size:11px">' + tag + '</span>';
+}
+
 function pointMeUrl(origin, dest, date, cabin, pax) {
   var cabinMap = { economy: 'economy', premium: 'premium', business: 'business', first: 'first' };
   var cls = cabinMap[cabin] || 'economy';
@@ -606,7 +2237,31 @@ var filterTier = 'all';
 var filterStops = 'any';
 var filterAirport = 'all';
 
-// --- Render top 3 cards ---
+// --- Wire up sort/filter buttons ---
+document.getElementById('filterBar').addEventListener('click', function(e) {
+  var btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+
+  var group = btn.closest('.filter-group');
+  if (btn.dataset.sort) {
+    currentSort = btn.dataset.sort;
+  } else if (btn.dataset.tier) {
+    filterTier = btn.dataset.tier;
+  } else if (btn.dataset.stops) {
+    filterStops = btn.dataset.stops;
+  } else if (btn.dataset.airport) {
+    filterAirport = btn.dataset.airport;
+  } else {
+    return;
+  }
+
+  group.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+
+  if (DATA) renderTable();
+});
+
+// --- Render top 3 cards + next 12 compact ---
 function renderTopDeals() {
   var top3 = DATA.scored.slice(0, 3);
   if (top3.length === 0) return;
@@ -626,8 +2281,9 @@ function renderTopDeals() {
       ? '<span class="verdict-badge" style="background:' + vc + '20;color:' + vc + ';border:1px solid ' + vc + '40">' + (combo.value_ratio != null ? combo.value_ratio + 'x ' : '') + verdictLabel(combo.verdict) + '</span>'
       : '<span class="verdict-badge" style="background:#71717A20;color:#71717A;border:1px solid #71717A40">NO DATA</span>';
 
-    var outUrl = pointMeUrl(combo.outbound.origin, combo.outbound.destination, combo.outbound.date, DATA.config.cabin, DATA.config.pax);
-    var retUrl = pointMeUrl(combo['return'].origin, combo['return'].destination, combo['return'].date, DATA.config.cabin, DATA.config.pax);
+    var cabinForUrl = currentViewCabin || DATA.config.cabin;
+    var outUrl = pointMeUrl(combo.outbound.origin, combo.outbound.destination, combo.outbound.date, cabinForUrl, DATA.config.pax);
+    var retUrl = pointMeUrl(combo['return'].origin, combo['return'].destination, combo['return'].date, cabinForUrl, DATA.config.pax);
 
     html += '<div class="deal-card">'
       + '<div class="deal-card-header">'
@@ -663,6 +2319,35 @@ function renderTopDeals() {
   });
 
   grid.innerHTML = html;
+
+  // Render next 12 deals in compact rows
+  var next12 = DATA.scored.slice(3, 15);
+  if (next12.length === 0) return;
+
+  document.getElementById('next12Title').style.display = '';
+  var list = document.getElementById('next12List');
+  var listHtml = '';
+
+  next12.forEach(function(combo, i) {
+    var rank = i + 4;
+    var totalStops = (combo.outbound.stops || 0) + (combo['return'].stops || 0);
+    var stopsLabel = totalStops === 0 ? 'nonstop' : totalStops + ' stop' + (totalStops !== 1 ? 's' : '');
+    var tierLabel = combo.confirmed ? 'confirmed' : 'likely';
+
+    listHtml += '<div class="next-deal-row">'
+      + '<span class="next-deal-rank">#' + rank + '</span>'
+      + '<div class="next-deal-info">'
+      + '<div class="next-deal-route">' + combo.outbound.origin + ' &rarr; ' + combo.outbound.destination + ' &rarr; ' + combo['return'].destination + '</div>'
+      + '<div class="next-deal-meta">' + combo.outbound.date + ' &rarr; ' + combo['return'].date + ' &middot; ' + combo.stay_days + 'd &middot; ' + stopsLabel + ' &middot; ' + tierLabel + '</div>'
+      + '</div>'
+      + '<div>'
+      + '<div class="next-deal-points">' + combo.total_pts.toLocaleString('en-US') + ' MR</div>'
+      + '<div class="next-deal-fees">$' + combo.total_fees.toFixed(2) + ' fees</div>'
+      + '</div>'
+      + '</div>';
+  });
+
+  list.innerHTML = listHtml;
 }
 
 // --- Render config bar ---
@@ -771,16 +2456,17 @@ function renderTable() {
       + '<td>' + (c.value_ratio != null ? c.value_ratio + 'x' : '') + '</td>'
       + '<td>' + verdictBadge(c.verdict) + '</td>'
       + '<td>' + stops + '</td>'
+      + '<td>' + sourceBadge(c.source_tag) + '</td>'
       + '</tr>';
   }
 
   if (filterTier !== 'likely' && confirmed.length > 0) {
-    html += '<tr class="section-header-row"><td colspan="14">CONFIRMED AVAILABLE (' + confirmed.length + ')</td></tr>';
+    html += '<tr class="section-header-row"><td colspan="15">CONFIRMED AVAILABLE (' + confirmed.length + ')</td></tr>';
     confirmed.forEach(function(c) { html += renderRow(c); });
   }
 
   if (filterTier !== 'confirmed' && likely.length > 0) {
-    html += '<tr class="section-header-row"><td colspan="14">LIKELY AVAILABLE (' + likely.length + ')</td></tr>';
+    html += '<tr class="section-header-row"><td colspan="15">LIKELY AVAILABLE (' + likely.length + ')</td></tr>';
     likely.forEach(function(c) { html += renderRow(c); });
   }
 
@@ -797,23 +2483,24 @@ function renderTable() {
   });
 }
 
-// --- Render heatmap ---
-function renderHeatmap() {
+// --- Render heatmap (points-based, green=best → red=worst) ---
+function renderHeatmap(scoredOverride) {
+  var scored = scoredOverride || (DATA && DATA.scored) || [];
   var lookup = {};
   var outDatesSet = {};
   var retDatesSet = {};
-  var minScore = Infinity;
-  var maxScore = -Infinity;
+  var minPts = Infinity;
+  var maxPts = -Infinity;
 
-  DATA.scored.forEach(function(c) {
+  scored.forEach(function(c) {
     var key = c.outbound.date + '|' + c['return'].date;
-    if (!lookup[key] || c.score < lookup[key]) {
-      lookup[key] = c.score;
+    if (!lookup[key] || c.total_pts < lookup[key].pts) {
+      lookup[key] = { pts: c.total_pts, fees: c.total_fees };
     }
     outDatesSet[c.outbound.date] = true;
     retDatesSet[c['return'].date] = true;
-    if (c.score < minScore) minScore = c.score;
-    if (c.score > maxScore) maxScore = c.score;
+    if (c.total_pts < minPts) minPts = c.total_pts;
+    if (c.total_pts > maxPts) maxPts = c.total_pts;
   });
 
   var outDates = Object.keys(outDatesSet).sort();
@@ -824,16 +2511,43 @@ function renderHeatmap() {
     return;
   }
 
-  function scoreColor(score) {
-    if (minScore === maxScore) return '#22C55E';
-    var t = (score - minScore) / (maxScore - minScore);
-    var r = Math.round(34 + t * (239 - 34));
-    var g = Math.round(197 - t * (197 - 68));
-    var b = Math.round(94 - t * (94 - 68));
+  document.getElementById('heatmapTitle').style.display = '';
+  document.getElementById('heatmapLegend').style.display = '';
+
+  // Green (best/lowest points) → Yellow → Red (worst/highest points)
+  // 5-stop gradient: dark green → green → yellow → orange → red
+  var stops = [
+    { t: 0.0, r: 21, g: 128, b: 61 },   // dark green #15803d
+    { t: 0.25, r: 34, g: 197, b: 94 },   // green #22c55e
+    { t: 0.5, r: 250, g: 204, b: 21 },   // yellow #facc15
+    { t: 0.75, r: 249, g: 115, b: 22 },  // orange #f97316
+    { t: 1.0, r: 239, g: 68, b: 68 }     // red #ef4444
+  ];
+
+  function ptsColor(pts) {
+    if (minPts === maxPts) return '#22C55E';
+    var t = (pts - minPts) / (maxPts - minPts);
+    // Find the two stops to interpolate between
+    var i = 0;
+    for (var s = 1; s < stops.length; s++) {
+      if (t <= stops[s].t) { i = s - 1; break; }
+    }
+    var s0 = stops[i], s1 = stops[i + 1];
+    var localT = (t - s0.t) / (s1.t - s0.t);
+    var r = Math.round(s0.r + localT * (s1.r - s0.r));
+    var g = Math.round(s0.g + localT * (s1.g - s0.g));
+    var b = Math.round(s0.b + localT * (s1.b - s0.b));
     return 'rgb(' + r + ',' + g + ',' + b + ')';
   }
 
-  var html = '<table class="heatmap-table"><thead><tr><th>Out \\ Ret</th>';
+  // Text color: white on dark colors, dark on light colors
+  function textColor(pts) {
+    if (minPts === maxPts) return '#fff';
+    var t = (pts - minPts) / (maxPts - minPts);
+    return t > 0.35 && t < 0.65 ? '#1a1a1a' : '#fff';
+  }
+
+  var html = '<table class="heatmap-table"><thead><tr><th>OUT \\ RET</th>';
   retDates.forEach(function(d) {
     html += '<th>' + d.slice(5) + '</th>';
   });
@@ -845,8 +2559,10 @@ function renderHeatmap() {
       var key = od + '|' + rd;
       var val = lookup[key];
       if (val !== undefined) {
-        var bg = scoreColor(val);
-        html += '<td style="background:' + bg + ';color:#fff" data-out="' + od + '" data-ret="' + rd + '" data-score="' + val + '">' + Math.round(val) + '</td>';
+        var bg = ptsColor(val.pts);
+        var fg = textColor(val.pts);
+        var display = val.pts >= 1000 ? Math.round(val.pts / 1000) + 'k' : val.pts;
+        html += '<td style="background:' + bg + ';color:' + fg + '" data-out="' + od + '" data-ret="' + rd + '" data-pts="' + val.pts + '" data-fees="' + val.fees.toFixed(2) + '">' + display + '</td>';
       } else {
         html += '<td class="empty"></td>';
       }
@@ -860,10 +2576,10 @@ function renderHeatmap() {
   // Tooltip
   var tooltip = document.getElementById('heatmapTooltip');
   document.getElementById('heatmapContainer').addEventListener('mouseover', function(e) {
-    var td = e.target.closest('td[data-score]');
+    var td = e.target.closest('td[data-pts]');
     if (td) {
       tooltip.style.display = 'block';
-      tooltip.textContent = td.getAttribute('data-out') + ' \u2192 ' + td.getAttribute('data-ret') + ' | Score: ' + td.getAttribute('data-score');
+      tooltip.textContent = td.getAttribute('data-out') + ' \u2192 ' + td.getAttribute('data-ret') + ' | ' + Number(td.getAttribute('data-pts')).toLocaleString('en-US') + ' MR | $' + td.getAttribute('data-fees') + ' fees';
     }
   });
   document.getElementById('heatmapContainer').addEventListener('mousemove', function(e) {
@@ -871,7 +2587,7 @@ function renderHeatmap() {
     tooltip.style.top = (e.clientY - 8) + 'px';
   });
   document.getElementById('heatmapContainer').addEventListener('mouseout', function(e) {
-    if (!e.target.closest('td[data-score]')) {
+    if (!e.target.closest('td[data-pts]')) {
       tooltip.style.display = 'none';
     }
   });
@@ -904,6 +2620,160 @@ function renderNearMisses() {
       + '</tr>';
   });
   document.getElementById('nearMissBody').innerHTML = html;
+}
+
+// --- Upgrade threshold (localStorage) ---
+var upgradeThresholdEl = document.getElementById('upgradeThreshold');
+var savedThreshold = localStorage.getItem('upgradeThreshold');
+if (savedThreshold !== null) upgradeThresholdEl.value = savedThreshold;
+upgradeThresholdEl.addEventListener('change', function() {
+  localStorage.setItem('upgradeThreshold', this.value);
+  if (activeCabins.length === 2) renderComparisonView();
+});
+
+// --- Heatmap cabin toggle ---
+function renderHeatmapToggle() {
+  var toggle = document.getElementById('heatmapCabinToggle');
+  if (activeCabins.length < 2) {
+    toggle.style.display = 'none';
+    return;
+  }
+  toggle.style.display = '';
+  var html = '<span style="font-size:12px;color:#71717A;margin-right:4px">Heatmap cabin:</span>';
+  activeCabins.forEach(function(cab) {
+    var checked = cab === currentViewCabin ? ' checked' : '';
+    html += '<label><input type="radio" name="hmCabin" value="' + cab + '"' + checked + '> ' + cab.charAt(0).toUpperCase() + cab.slice(1) + '</label>';
+  });
+  toggle.innerHTML = html;
+
+  toggle.querySelectorAll('input[name="hmCabin"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      currentViewCabin = this.value;
+      var cabData = CABIN_DATA[currentViewCabin];
+      if (cabData && cabData.scored && cabData.scored.length > 0) {
+        renderHeatmap(cabData.scored);
+      }
+    });
+  });
+}
+
+// --- Comparison view ---
+function renderComparisonView() {
+  var section = document.getElementById('comparisonSection');
+  if (activeCabins.length < 2) {
+    section.style.display = 'none';
+    return;
+  }
+
+  var cab1 = activeCabins[0];
+  var cab2 = activeCabins[1];
+  var d1 = CABIN_DATA[cab1];
+  var d2 = CABIN_DATA[cab2];
+
+  if (!d1 || !d2) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = '';
+  var cardsHtml = '';
+
+  function cabinCard(cabName, cabData) {
+    var h = '<div class="comparison-card"><h4>' + cabName + '</h4>';
+    if (cabData.error) {
+      h += '<p style="color:#EF4444;font-size:13px">Error: ' + cabData.error + '</p>';
+    } else if (!cabData.scored || cabData.scored.length === 0) {
+      h += '<p style="color:#71717A;font-size:13px">No results</p>';
+    } else {
+      var best = cabData.scored[0];
+      h += '<div class="comparison-stat"><span class="label">Best deal</span><span class="value">' + best.total_pts.toLocaleString('en-US') + ' MR</span></div>';
+      h += '<div class="comparison-stat"><span class="label">Fees</span><span class="value">$' + best.total_fees.toFixed(2) + '</span></div>';
+      h += '<div class="comparison-stat"><span class="label">Cash price</span><span class="value">' + (best.cash_price_usd != null ? '$' + Number(best.cash_price_usd).toLocaleString('en-US') : 'N/A') + '</span></div>';
+      h += '<div class="comparison-stat"><span class="label">Total combos</span><span class="value">' + cabData.scored.length + '</span></div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  cardsHtml += cabinCard(cab1, d1);
+  cardsHtml += cabinCard(cab2, d2);
+  document.getElementById('comparisonCards').innerHTML = cardsHtml;
+
+  // Upgrade alert
+  var alertWrap = document.getElementById('upgradeAlertWrap');
+  var b1 = d1.scored && d1.scored.length > 0 ? d1.scored[0] : null;
+  var b2 = d2.scored && d2.scored.length > 0 ? d2.scored[0] : null;
+
+  if (!b1 || !b2) {
+    alertWrap.innerHTML = '<div class="upgrade-alert"><h4>Upgrade Analysis</h4><p style="color:#71717A">Need results in both cabins to compare.</p></div>';
+    return;
+  }
+
+  // Figure out which is higher cabin
+  var cabinOrder = ['economy', 'premium', 'business', 'first'];
+  var lower, higher, lowerName, higherName;
+  if (cabinOrder.indexOf(cab1) < cabinOrder.indexOf(cab2)) {
+    lower = b1; lowerName = cab1; higher = b2; higherName = cab2;
+  } else {
+    lower = b2; lowerName = cab2; higher = b1; higherName = cab1;
+  }
+
+  var deltaPts = higher.total_pts - lower.total_pts;
+  var deltaPct = lower.total_pts > 0 ? (deltaPts / lower.total_pts * 100) : 0;
+  var threshold = parseInt(upgradeThresholdEl.value, 10) || 40;
+
+  var MR_VALUE_USD = 0.02;
+  var deltaCash = null;
+  var upgradeValue = null;
+  var upgradeVerdict = '';
+  var verdictClass = '';
+  var alertClass = '';
+
+  if (higher.cash_price_usd != null && lower.cash_price_usd != null) {
+    deltaCash = (higher.cash_price_usd - lower.cash_price_usd);
+    if (deltaPts > 0) {
+      upgradeValue = deltaCash / (deltaPts * MR_VALUE_USD);
+    }
+  }
+
+  if (upgradeValue !== null) {
+    if (upgradeValue > 1.5) {
+      upgradeVerdict = 'Worth it';
+      verdictClass = 'good';
+      alertClass = 'worth-it';
+    } else if (upgradeValue >= 1.0) {
+      upgradeVerdict = 'Marginal';
+      verdictClass = 'meh';
+      alertClass = 'marginal';
+    } else {
+      upgradeVerdict = 'Not worth it';
+      verdictClass = 'bad';
+      alertClass = 'not-worth';
+    }
+  }
+
+  var isAlert = deltaPct <= threshold;
+  var alertEmoji = isAlert ? '&#9889; ' : '';
+
+  var html = '<div class="upgrade-alert ' + alertClass + '">';
+  html += '<h4>' + alertEmoji + 'UPGRADE ANALYSIS' + (upgradeVerdict ? '<span class="upgrade-verdict ' + verdictClass + '">' + upgradeVerdict + '</span>' : '') + '</h4>';
+  html += '<p>';
+  html += '<span class="highlight">' + higherName.charAt(0).toUpperCase() + higherName.slice(1) + '</span> is ';
+  html += '<span class="highlight">+' + Math.round(deltaPct) + '%</span> MR ';
+  html += '(<span class="highlight">+' + deltaPts.toLocaleString('en-US') + '</span> pts) over ' + lowerName + '<br>';
+
+  if (deltaCash !== null) {
+    html += 'Cash value difference: <span class="highlight">$' + Math.round(deltaCash).toLocaleString('en-US') + '</span> more per ticket<br>';
+  }
+  if (upgradeValue !== null) {
+    html += 'Upgrade value ratio: <span class="highlight">' + upgradeValue.toFixed(1) + 'x</span>';
+    html += ' (each extra MR point gets you $' + (upgradeValue * MR_VALUE_USD).toFixed(3) + ' in cabin value)';
+  } else {
+    html += 'Upgrade value: <span class="highlight">N/A</span> (missing cash price data)';
+  }
+  html += '</p></div>';
+
+  alertWrap.innerHTML = html;
 }
 
 // --- Wire up event handlers ---
