@@ -2013,6 +2013,10 @@ function startSearch() {
     alert('Fill in origin and destination(s)');
     return;
   }
+  if (params.tripType === 'oneway') {
+    alert('One-way searches are not supported yet. Please select round-trip.');
+    return;
+  }
 
   var cabins = getSelectedCabins();
   updateUrlParams(params);
