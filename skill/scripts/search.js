@@ -18,7 +18,7 @@ import { writeToSheet } from './sheets.js';
 import { writeHistory } from './history.js';
 import { detectBonuses } from './bonus-detect.js';
 import { notify, buildNotifyMessage } from './notify.js';
-import { addCashPrices } from './cash-price.js';
+import { addCashPrices, getBrowseServer } from './cash-price.js';
 import { writeReport } from './report.js';
 import { writeWebData } from './web-export.js';
 
@@ -111,6 +111,15 @@ export async function runSearch(extConfig, extPrograms) {
   console.log(`[search] Outbound: ${config.outbound.start} to ${config.outbound.end}`);
   console.log(`[search] Return:   ${config.return.start} to ${config.return.end}`);
   console.log(`[search] Stay:     ${config.trip_length.min}-${config.trip_length.max} days`);
+
+  // Preflight: check browse server for cash price lookups
+  const browseServer = getBrowseServer();
+  if (browseServer) {
+    console.log(`[search] ✓ Browse server found (port ${browseServer.port}) — cash prices ENABLED`);
+  } else {
+    console.warn('[search] ✗ No browse server — cash prices will be SKIPPED');
+    console.warn('[search]   Start the browse daemon first if you want Google Flights cash prices');
+  }
 
   // 2. Detect transfer bonuses (runs before Promise.all — shares browser with pointme.js)
   let localPrograms;
@@ -253,7 +262,7 @@ export async function runSearch(extConfig, extPrograms) {
 
   // 15. Write to sheet (CSV fallback)
   console.log('\n[search] Writing results...');
-  let filePaths;
+  let filePaths = {};
   try {
     filePaths = writeToSheet(scored, nearMisses, config);
     console.log(`[search] Results written to: ${filePaths.results || 'unknown'}`);

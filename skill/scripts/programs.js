@@ -3,6 +3,9 @@
  * Each program has: name, ratio (MR-to-program), bonus_ratio (null = no active bonus),
  * slug (Seats.aero source param, null = point.me-only), airline (IATA code).
  */
+/** MR-to-USD valuation: $0.02 per point (industry standard — TPG, NerdWallet). */
+export const MR_VALUE_USD = 0.02;
+
 export const PROGRAMS = {
   aerlingus: { name: "Aer Lingus AerClub", ratio: 1, bonus_ratio: null, slug: null, airline: "EI" },
   aeromexico: { name: "Aeromexico Rewards", ratio: 1.6, bonus_ratio: null, slug: "aeromexico", airline: "AM" },

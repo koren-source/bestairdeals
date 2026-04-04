@@ -6,11 +6,12 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { MR_VALUE_USD_USD } from './programs.js';
 
-function getBrowseServer() {
+export function getBrowseServer() {
   const candidates = [
     join(process.cwd(), '.gstack/browse.json'),
-    join(process.env.HOME, '.gstack/browse.json'),
+    ...(process.env.HOME ? [join(process.env.HOME, '.gstack/browse.json')] : []),
   ];
   for (const stateFile of candidates) {
     if (existsSync(stateFile)) {
@@ -82,14 +83,12 @@ async function lookupCashPrice(server, origin, dest, outDate, retDate, pax, cabi
  * @returns {object[]} combos with cash_price_usd, award_cost_usd, value_ratio, verdict added
  */
 export async function addCashPrices(scoredCombos, config, topN = 3) {
-  const MR_VALUE = 0.02; // $0.02 per point — industry standard (TPG, NerdWallet)
-
   const server = getBrowseServer();
   if (!server) {
     console.warn('[cash-price] No browse server found — skipping cash price lookup');
     return scoredCombos.slice(0, topN).map((c) => ({
       ...c,
-      award_cost_usd: +(c.total_pts * MR_VALUE + c.total_fees).toFixed(2),
+      award_cost_usd: +(c.total_pts * MR_VALUE_USD + c.total_fees).toFixed(2),
       cash_price_usd: null,
       value_ratio: null,
       verdict: 'NO_CASH_DATA',
@@ -103,7 +102,7 @@ export async function addCashPrices(scoredCombos, config, topN = 3) {
     const combo = top[i];
     const out = combo.outbound;
     const ret = combo.return;
-    const award_cost_usd = +(combo.total_pts * MR_VALUE + combo.total_fees).toFixed(2);
+    const award_cost_usd = +(combo.total_pts * MR_VALUE_USD + combo.total_fees).toFixed(2);
 
     console.log(`[cash-price] (${i + 1}/${topN}) Looking up ${out.origin}->${out.destination} ${out.date} / ${ret.origin}->${ret.destination} ${ret.date}`);
 
