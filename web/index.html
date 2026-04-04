@@ -990,13 +990,16 @@
   </div>
 
   <div class="date-mode-toggle">
+    <label><input type="radio" name="tripType" value="roundtrip" checked> Round Trip</label>
+    <label><input type="radio" name="tripType" value="oneway"> One Way</label>
+    <span style="width:16px"></span>
     <label><input type="radio" name="dateMode" value="exact" checked> Exact</label>
     <label><input type="radio" name="dateMode" value="flex"> Flexible</label>
   </div>
 
   <div class="exact-fields" id="exactFields">
     <div class="form-group">
-      <label class="form-label">Outbound Start</label>
+      <label class="form-label">Depart Date</label>
       <div class="cal-wrap">
         <button type="button" class="cal-trigger" id="sfOutStart" data-value="">
           <span class="cal-placeholder">Pick date</span>
@@ -1005,18 +1008,8 @@
         <div class="cal-popup" id="calOutStart"></div>
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Outbound End</label>
-      <div class="cal-wrap">
-        <button type="button" class="cal-trigger" id="sfOutEnd" data-value="">
-          <span class="cal-placeholder">Pick date</span>
-          <span class="cal-icon">&#128197;</span>
-        </button>
-        <div class="cal-popup" id="calOutEnd"></div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Return Start</label>
+    <div class="form-group return-field">
+      <label class="form-label">Return Date</label>
       <div class="cal-wrap">
         <button type="button" class="cal-trigger" id="sfRetStart" data-value="">
           <span class="cal-placeholder">Pick date</span>
@@ -1025,24 +1018,6 @@
         <div class="cal-popup" id="calRetStart"></div>
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Return End</label>
-      <div class="cal-wrap">
-        <button type="button" class="cal-trigger" id="sfRetEnd" data-value="">
-          <span class="cal-placeholder">Pick date</span>
-          <span class="cal-icon">&#128197;</span>
-        </button>
-        <div class="cal-popup" id="calRetEnd"></div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Min Days</label>
-      <input type="number" class="form-input" id="sfMinDays" min="1" value="19">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Max Days</label>
-      <input type="number" class="form-input" id="sfMaxDays" min="1" value="23">
-    </div>
   </div>
 
   <div class="flex-fields" id="flexFields" style="display:none">
@@ -1050,13 +1025,13 @@
       <label class="form-label">Month</label>
       <input type="month" class="form-input" id="sfMonth">
     </div>
-    <div class="form-group">
+    <div class="form-group return-field">
       <label class="form-label">Min Days</label>
-      <input type="number" class="form-input" id="sfFlexMinDays" min="1" value="19">
+      <input type="number" class="form-input" id="sfMinDays" min="1" value="19">
     </div>
-    <div class="form-group">
+    <div class="form-group return-field">
       <label class="form-label">Max Days</label>
-      <input type="number" class="form-input" id="sfFlexMaxDays" min="1" value="23">
+      <input type="number" class="form-input" id="sfMaxDays" min="1" value="23">
     </div>
   </div>
 
@@ -1109,12 +1084,12 @@
     <!-- Date Heatmap -->
     <div id="heatmapCabinToggle" class="heatmap-cabin-toggle" style="display:none"></div>
     <div class="section-title" id="heatmapTitle" style="display:none">Points Heatmap (Best MR Points by Date Pair)</div>
-    <div class="heatmap-container" id="heatmapContainer"></div>
     <div class="heatmap-legend" id="heatmapLegend" style="display:none">
       <span class="legend-label">Best</span>
       <div class="legend-gradient"></div>
       <span class="legend-label">Worst</span>
     </div>
+    <div class="heatmap-container" id="heatmapContainer"></div>
     <div class="heatmap-tooltip" id="heatmapTooltip"></div>
 
     <!-- Filter bar -->
@@ -1305,6 +1280,16 @@ document.querySelectorAll('input[name="dateMode"]').forEach(function(radio) {
     var isExact = this.value === 'exact';
     document.getElementById('exactFields').style.display = isExact ? '' : 'none';
     document.getElementById('flexFields').style.display = isExact ? 'none' : '';
+  });
+});
+
+// --- Trip Type Toggle ---
+document.querySelectorAll('input[name="tripType"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    var isOneWay = this.value === 'oneway';
+    document.querySelectorAll('.return-field').forEach(function(el) {
+      el.style.display = isOneWay ? 'none' : '';
+    });
   });
 });
 
@@ -1771,7 +1756,7 @@ function setupCalendar(triggerId, popupId) {
   });
 }
 
-var calFields = ['sfOutStart', 'sfOutEnd', 'sfRetStart', 'sfRetEnd'];
+var calFields = ['sfOutStart', 'sfRetStart'];
 calFields.forEach(function(id) {
   setupCalendar(id, 'cal' + id.replace('sf', ''));
 });
@@ -1833,26 +1818,21 @@ function buildParams() {
   var cabin = cabins[0]; // primary cabin for single-cabin compat
   var pax = parseInt(document.getElementById('sfPax').value, 10) || 1;
 
-  var params = { origin: origin, destinations: dests, cabin: cabin, pax: pax, mode: mode };
+  var tripType = document.querySelector('input[name="tripType"]:checked').value;
+  var params = { origin: origin, destinations: dests, cabin: cabin, pax: pax, mode: mode, tripType: tripType };
 
   if (mode === 'exact') {
-    params.outbound = {
-      start: document.getElementById('sfOutStart').getValue(),
-      end: document.getElementById('sfOutEnd').getValue(),
-    };
-    params['return'] = {
-      start: document.getElementById('sfRetStart').getValue(),
-      end: document.getElementById('sfRetEnd').getValue(),
-    };
-    params.trip_length = {
-      min: parseInt(document.getElementById('sfMinDays').value, 10),
-      max: parseInt(document.getElementById('sfMaxDays').value, 10),
-    };
+    var departDate = document.getElementById('sfOutStart').getValue();
+    params.outbound = { start: departDate, end: departDate };
+    if (tripType === 'roundtrip') {
+      var returnDate = document.getElementById('sfRetStart').getValue();
+      params['return'] = { start: returnDate, end: returnDate };
+    }
   } else {
     params.outbound = { month: document.getElementById('sfMonth').value };
     params.trip_length = {
-      min: parseInt(document.getElementById('sfFlexMinDays').value, 10),
-      max: parseInt(document.getElementById('sfFlexMaxDays').value, 10),
+      min: parseInt(document.getElementById('sfMinDays').value, 10),
+      max: parseInt(document.getElementById('sfMaxDays').value, 10),
     };
   }
   return params;
@@ -1876,14 +1856,24 @@ function fillFormFromParams(p) {
   }
   if (p.pax) document.getElementById('sfPax').value = p.pax;
 
+  // Trip type
+  var safeTripType = (p.tripType === 'oneway') ? 'oneway' : 'roundtrip';
+  if (p.tripType) {
+    document.querySelector('input[name="tripType"][value="' + safeTripType + '"]').checked = true;
+    var isOneWay = safeTripType === 'oneway';
+    document.querySelectorAll('.return-field').forEach(function(el) {
+      el.style.display = isOneWay ? 'none' : '';
+    });
+  }
+
   if (p.mode === 'flex') {
     document.querySelector('input[name="dateMode"][value="flex"]').checked = true;
     document.getElementById('exactFields').style.display = 'none';
     document.getElementById('flexFields').style.display = '';
     if (p.outbound && p.outbound.month) document.getElementById('sfMonth').value = p.outbound.month;
     if (p.trip_length) {
-      document.getElementById('sfFlexMinDays').value = p.trip_length.min;
-      document.getElementById('sfFlexMaxDays').value = p.trip_length.max;
+      document.getElementById('sfMinDays').value = p.trip_length.min;
+      document.getElementById('sfMaxDays').value = p.trip_length.max;
     }
   } else {
     document.querySelector('input[name="dateMode"][value="exact"]').checked = true;
@@ -1891,15 +1881,9 @@ function fillFormFromParams(p) {
     document.getElementById('flexFields').style.display = 'none';
     if (p.outbound) {
       document.getElementById('sfOutStart').setValue(p.outbound.start || '');
-      document.getElementById('sfOutEnd').setValue(p.outbound.end || '');
     }
     if (p['return']) {
       document.getElementById('sfRetStart').setValue(p['return'].start || '');
-      document.getElementById('sfRetEnd').setValue(p['return'].end || '');
-    }
-    if (p.trip_length) {
-      document.getElementById('sfMinDays').value = p.trip_length.min;
-      document.getElementById('sfMaxDays').value = p.trip_length.max;
     }
   }
 }
@@ -1914,14 +1898,18 @@ function loadUrlParams() {
     cabin: sp.get('cabin') || 'economy',
     pax: parseInt(sp.get('pax') || '1', 10),
     mode: sp.get('mode') || 'exact',
+    tripType: (sp.get('tripType') === 'oneway' ? 'oneway' : 'roundtrip'),
   };
   if (p.mode === 'flex') {
     p.outbound = { month: sp.get('month') || '' };
     p.trip_length = { min: parseInt(sp.get('min') || '19', 10), max: parseInt(sp.get('max') || '23', 10) };
   } else {
-    p.outbound = { start: sp.get('outStart') || '', end: sp.get('outEnd') || '' };
-    p['return'] = { start: sp.get('retStart') || '', end: sp.get('retEnd') || '' };
-    p.trip_length = { min: parseInt(sp.get('min') || '19', 10), max: parseInt(sp.get('max') || '23', 10) };
+    var depart = sp.get('outStart') || '';
+    p.outbound = { start: depart, end: depart };
+    if (p.tripType === 'roundtrip') {
+      var ret = sp.get('retStart') || '';
+      p['return'] = { start: ret, end: ret };
+    }
   }
   fillFormFromParams(p);
 }
@@ -1934,16 +1922,17 @@ function updateUrlParams(params) {
   sp.set('cabin', params.cabin);
   sp.set('pax', params.pax);
   sp.set('mode', params.mode);
+  sp.set('tripType', params.tripType || 'roundtrip');
   if (params.mode === 'flex') {
     sp.set('month', params.outbound.month);
+    sp.set('min', params.trip_length.min);
+    sp.set('max', params.trip_length.max);
   } else {
     sp.set('outStart', params.outbound.start);
-    sp.set('outEnd', params.outbound.end);
-    sp.set('retStart', params['return'].start);
-    sp.set('retEnd', params['return'].end);
+    if (params['return']) {
+      sp.set('retStart', params['return'].start);
+    }
   }
-  sp.set('min', params.trip_length.min);
-  sp.set('max', params.trip_length.max);
   history.replaceState(null, '', '?' + sp.toString());
 }
 
@@ -2367,9 +2356,9 @@ function renderConfigBar() {
     + '<div class="config-item"><span class="config-label">Route</span><span class="config-value">' + cfg.origin + ' &rarr; ' + cfg.destinations.join(', ') + '</span></div>'
     + '<div class="config-item"><span class="config-label">Cabin</span><span class="config-value">' + (cfg.cabin || '').toUpperCase() + '</span></div>'
     + '<div class="config-item"><span class="config-label">Pax</span><span class="config-value">' + cfg.pax + '</span></div>'
-    + '<div class="config-item"><span class="config-label">Outbound</span><span class="config-value">' + (cfg.outbound.start || '') + ' to ' + (cfg.outbound.end || '') + '</span></div>'
-    + '<div class="config-item"><span class="config-label">Return</span><span class="config-value">' + (cfg['return'].start || '') + ' to ' + (cfg['return'].end || '') + '</span></div>'
-    + '<div class="config-item"><span class="config-label">Stay</span><span class="config-value">' + (cfg.trip_length.min || 0) + '-' + (cfg.trip_length.max || 0) + ' days</span></div>'
+    + '<div class="config-item"><span class="config-label">Depart</span><span class="config-value">' + (cfg.outbound.start || '') + (cfg.outbound.end && cfg.outbound.end !== cfg.outbound.start ? ' to ' + cfg.outbound.end : '') + '</span></div>'
+    + (cfg['return'] ? '<div class="config-item"><span class="config-label">Return</span><span class="config-value">' + (cfg['return'].start || '') + (cfg['return'].end && cfg['return'].end !== cfg['return'].start ? ' to ' + cfg['return'].end : '') + '</span></div>' : '')
+    + (cfg.trip_length ? '<div class="config-item"><span class="config-label">Stay</span><span class="config-value">' + (cfg.trip_length.min || 0) + '-' + (cfg.trip_length.max || 0) + ' days</span></div>' : '')
     + '<div class="config-item"><span class="config-label">Sources</span><span class="config-value">' + (sources.length > 0 ? sources.join(', ') : 'seats.aero, point.me') + '</span></div>';
 
   document.getElementById('configBar').innerHTML = html;
@@ -2604,16 +2593,17 @@ function renderNearMisses() {
   DATA.nearMisses.forEach(function(nm) {
     var reasonClass = nm.reason === 'date' ? 'reason-date' : 'reason-seats';
     var reasonLabel = nm.reason === 'date' ? 'DATE' : 'SEATS';
+    var tripLen = DATA.config.trip_length || {};
     var reasonText = nm.reason === 'date'
-      ? 'Stay ' + nm.stay_days + 'd (range ' + DATA.config.trip_length.min + '-' + DATA.config.trip_length.max + 'd)'
+      ? 'Stay ' + nm.stay_days + 'd (range ' + (tripLen.min || '?') + '-' + (tripLen.max || '?') + 'd)'
       : 'Seats below ' + DATA.config.pax + ' pax';
 
     html += '<tr>'
       + '<td><span class="reason-badge ' + reasonClass + '">' + reasonLabel + '</span></td>'
       + '<td>' + nm.outbound.date + '</td>'
-      + '<td>' + nm['return'].date + '</td>'
-      + '<td>' + nm.stay_days + '</td>'
-      + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + progName(nm.outbound.program) + ' / ' + progName(nm['return'].program) + '</td>'
+      + '<td>' + (nm['return'] ? nm['return'].date : '—') + '</td>'
+      + '<td>' + (nm.stay_days || '—') + '</td>'
+      + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + progName(nm.outbound.program) + (nm['return'] ? ' / ' + progName(nm['return'].program) : '') + '</td>'
       + '<td>' + fmt(nm.total_pts) + '</td>'
       + '<td>' + fmtUsd(nm.total_fees) + '</td>'
       + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + reasonText + '</td>'
