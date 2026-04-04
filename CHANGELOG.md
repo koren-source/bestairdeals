@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1.0] - 2026-04-04
+
+### Added
+- One-way trip option: toggle between round trip and one way, form and search params adapt accordingly
+
+### Changed
+- Exact date mode simplified to just Depart Date and Return Date (removed Outbound End and Return End range fields)
+- Min/Max Days fields moved to flexible mode only (no longer shown in exact mode)
+- Heatmap color legend (Best/Worst gradient) moved above the table so it's visible without scrolling
+
+### Fixed
+- Config bar crash when viewing one-way search results (guarded undefined return/trip_length)
+- Near-miss table crash on one-way trips (guarded undefined return leg)
+- CSS selector injection via crafted tripType URL parameter (whitelisted to roundtrip/oneway)
+
 ## [0.2.0.0] - 2026-04-04
 
 ### Added
