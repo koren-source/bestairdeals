@@ -10,8 +10,8 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'fs';
 import { dirname, join } from 'path';
-import { execSync } from 'child_process';
 import { PROGRAMS } from './programs.js';
+import { getBrowseServer as getGlobalBrowseServer } from './cash-price.js';
 
 const CABIN_MAP = {
   economy: 'economy',
@@ -52,9 +52,9 @@ export function generateDateRange(start, end) {
  * @param {string} cabin
  * @returns {string}
  */
-function buildPointMeUrl(origin, destination, date, cabin) {
+function buildPointMeUrl(origin, destination, date, cabin, pax = 1) {
   const classOfService = CABIN_MAP[cabin] || 'economy';
-  return `https://amex.point.me/results?departureIata=${origin}&arrivalIata=${destination}&departureDate=${date}&classOfService=${classOfService}&legType=oneWay&passengers=1`;
+  return `https://amex.point.me/results?departureIata=${origin}&arrivalIata=${destination}&departureDate=${date}&classOfService=${classOfService}&legType=oneWay&passengers=${pax}`;
 }
 
 /**
@@ -105,8 +105,6 @@ function sleep(ms) {
 
 // ─── gstack browse HTTP client ───
 
-const BROWSE_BINARY = join(process.env.HOME, '.claude/skills/gstack/browse/dist/browse');
-
 // Build a reverse lookup: "Flying Blue" → "flyingblue", "Virgin Atlantic" → "virgin", etc.
 // point.me shows display names, we need our internal keys.
 const PROGRAM_NAME_MAP = {};
@@ -155,50 +153,14 @@ PROGRAM_NAME_MAP['virgin atlantic flying club'] = 'virgin';
 
 /**
  * Resolve the browse server connection info from .gstack/browse.json.
- * If no server running, attempt to start one via the browse binary.
+ * Delegates to the shared getBrowseServer in cash-price.js.
  */
 function getBrowseServer() {
-  // Check multiple locations for browse.json
-  const candidates = [
-    join(process.cwd(), '.gstack/browse.json'),
-    join(process.env.HOME, '.gstack/browse.json'),
-  ];
-
-  for (const stateFile of candidates) {
-    if (existsSync(stateFile)) {
-      try {
-        const state = JSON.parse(readFileSync(stateFile, 'utf-8'));
-        if (state.port && state.token) {
-          return { port: state.port, token: state.token };
-        }
-      } catch {
-        // try next
-      }
-    }
+  const server = getGlobalBrowseServer();
+  if (!server) {
+    throw new Error('Browse server not running. Start it with: gstack browse --daemon');
   }
-
-  // No server found, try to start one
-  console.log('[point.me] No browse server found, starting one...');
-  try {
-    execSync(`${BROWSE_BINARY} status`, { timeout: 15000, stdio: 'pipe' });
-    // Re-read state after status command (which auto-starts)
-    for (const stateFile of candidates) {
-      if (existsSync(stateFile)) {
-        try {
-          const state = JSON.parse(readFileSync(stateFile, 'utf-8'));
-          if (state.port && state.token) {
-            return { port: state.port, token: state.token };
-          }
-        } catch {
-          // try next
-        }
-      }
-    }
-  } catch (err) {
-    throw new Error(`Cannot start browse server: ${err.message}`);
-  }
-
-  throw new Error('Browse server state file not found. Run "browse status" to start the server.');
+  return server;
 }
 
 /**
@@ -444,11 +406,15 @@ function filterByCabin(records, cabin) {
  * destination. Results are cached incrementally to JSONL for resumability.
  *
  * @param {Object} config - Trip config from trip.json
+ * @param {Object} [options] - Optional callbacks for streaming
+ * @param {function} [options.onDateComplete] - Called with records after each date completes
+ * @param {function} [options.onProgress] - Called with { agent, pct, dates_completed, dates_total, message }
+ * @param {function} [options.shouldAbort] - Returns true to abort search early
  * @returns {Promise<Object[]>} Flat array of availability records
  */
-export async function searchPointMe(config) {
+export async function searchPointMe(config, options = {}) {
   const today = new Date().toISOString().split('T')[0];
-  const cachePath = `output/.pointme-cache-${today}.jsonl`;
+  const cachePath = `output/.pointme-cache-${today}-${config.cabin}-${config.pax}.jsonl`;
   const cachedKeys = loadCache(cachePath);
   const results = [];
 
@@ -533,7 +499,13 @@ export async function searchPointMe(config) {
 
   for (const search of pending) {
     searchCount++;
-    const url = buildPointMeUrl(search.origin, search.destination, search.date, config.cabin);
+    // Check abort before each date
+    if (options.shouldAbort && options.shouldAbort()) {
+      console.log('[point.me] Search aborted');
+      break;
+    }
+
+    const url = buildPointMeUrl(search.origin, search.destination, search.date, config.cabin, config.pax);
 
     console.log(`[point.me] (${searchCount}/${pending.length}) ${search.direction} ${search.origin}->${search.destination} ${search.date}`);
 
@@ -559,6 +531,9 @@ export async function searchPointMe(config) {
         results.push(...records);
         appendToCache(cachePath, records);
         consecutiveEmpty = 0;
+
+        // Streaming callbacks
+        if (options.onDateComplete) options.onDateComplete(records);
       } else {
         consecutiveEmpty++;
         if (consecutiveEmpty >= MAX_CONSECUTIVE_EMPTY) {
@@ -575,6 +550,18 @@ export async function searchPointMe(config) {
       }
       console.warn(`[point.me] WARN: Failed ${search.date} ${search.origin}->${search.destination}: ${err.message}`);
       consecutiveEmpty++;
+    }
+
+    // Progress callback
+    if (options.onProgress) {
+      const pct = Math.round((searchCount / pending.length) * 100);
+      options.onProgress({
+        agent: 'pointme',
+        pct,
+        dates_completed: searchCount,
+        dates_total: pending.length,
+        message: `${search.direction} ${search.origin}->${search.destination} ${search.date}`,
+      });
     }
 
     // 2-second delay between searches
