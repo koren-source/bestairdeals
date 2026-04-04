@@ -14,6 +14,10 @@ export function scoreCombo(combo, config) {
   const is_cross_airport = combo.outbound.destination !== combo.return.origin;
 
   // lower = better
+  // fee_multiplier: how many MR points is $1 in fees worth?
+  //   10 = points-first (fees are a tiebreaker)
+  //   50 = balanced
+  //  100 = fees-averse (treats $1 = 100 MR)
   const score = combo.total_pts
     + (combo.total_fees * config.fee_multiplier)
     + (total_stops * config.stops_penalty)

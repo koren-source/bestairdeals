@@ -18,6 +18,7 @@ import { writeToSheet } from './sheets.js';
 import { writeHistory } from './history.js';
 import { detectBonuses } from './bonus-detect.js';
 import { notify, buildNotifyMessage } from './notify.js';
+import { addCashPrices } from './cash-price.js';
 
 const VALID_CABINS = ['economy', 'premium', 'business', 'first'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -191,7 +192,28 @@ async function main() {
   const nearMisses = buildNearMisses(outbound, returns, config, scored);
   console.log(`[search] Near-misses: ${nearMisses.length}`);
 
-  // 11. Build summaries for top results
+  // 11. Cash price comparison for top 3
+  console.log('\n[search] Looking up cash prices for top 3 deals...');
+  let topWithCash = [];
+  try {
+    topWithCash = await addCashPrices(scored, config, 3);
+    console.log('\n[search] === TOP 3 DEALS (Points vs Cash) ===');
+    for (let i = 0; i < topWithCash.length; i++) {
+      const c = topWithCash[i];
+      const progOut = localPrograms[c.outbound.program]?.name ?? c.outbound.program;
+      const progRet = localPrograms[c.return.program]?.name ?? c.return.program;
+      console.log(`  #${i + 1}: ${progOut} ${c.outbound.date} → ${progRet} ${c.return.date} (${c.stay_days}d)`);
+      console.log(`      ${c.total_pts.toLocaleString()} MR + $${c.total_fees.toFixed(2)} fees = $${c.award_cost_usd} award cost`);
+      console.log(`      Cash price: ${c.cash_price_usd != null ? '$' + c.cash_price_usd : 'N/A'} | Value: ${c.value_ratio ?? '?'}x | ${c.verdict}`);
+      console.log(`      Book outbound: https://amex.point.me/results?departureIata=${c.outbound.origin}&arrivalIata=${c.outbound.destination}&departureDate=${c.outbound.date}&classOfService=${config.cabin}&legType=oneWay&passengers=${config.pax}`);
+      console.log(`      Book return:   https://amex.point.me/results?departureIata=${c.return.origin}&arrivalIata=${c.return.destination}&departureDate=${c.return.date}&classOfService=${config.cabin}&legType=oneWay&passengers=${config.pax}`);
+      console.log(`      Transfer MR:   https://global.americanexpress.com/rewards/transfer`);
+    }
+  } catch (err) {
+    console.warn(`[search] WARN: Cash price lookup failed: ${err.message}`);
+  }
+
+  // 12. Build summaries for top results
   if (scored.length > 0) {
     console.log('\n[search] Top 5 deals:');
     const top5 = scored.slice(0, 5);
@@ -201,7 +223,17 @@ async function main() {
     }
   }
 
-  // 12. Write to sheet (CSV fallback)
+  // 12. Merge cash prices into scored results
+  if (topWithCash.length > 0) {
+    for (let i = 0; i < topWithCash.length && i < scored.length; i++) {
+      scored[i].award_cost_usd = topWithCash[i].award_cost_usd;
+      scored[i].cash_price_usd = topWithCash[i].cash_price_usd;
+      scored[i].value_ratio = topWithCash[i].value_ratio;
+      scored[i].verdict = topWithCash[i].verdict;
+    }
+  }
+
+  // 13. Write to sheet (CSV fallback)
   console.log('\n[search] Writing results...');
   let filePaths;
   try {

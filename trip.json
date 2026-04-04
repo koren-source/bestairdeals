@@ -6,7 +6,7 @@
   "outbound": { "start": "2026-06-01", "end": "2026-07-31" },
   "return": { "start": "2026-06-22", "end": "2026-08-21" },
   "trip_length": { "min": 19, "max": 23 },
-  "fee_multiplier": 100,
+  "fee_multiplier": 10,
   "high_fee_threshold": 800,
   "stops_penalty": 5000,
   "cross_airport_penalty": 5000,

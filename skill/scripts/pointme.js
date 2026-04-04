@@ -503,7 +503,13 @@ export async function searchPointMe(config) {
         }
       }
     }
-    return results;
+    const filtered = filterByCabin(results, config.cabin);
+    console.log(`[point.me] Loaded ${results.length} cached records, ${filtered.length} in ${config.cabin}`);
+    if (filtered.length === 0 && results.length > 0) {
+      console.warn(`[point.me] WARN: No ${config.cabin} results in cache. Returning all ${results.length} results.`);
+      return results;
+    }
+    return filtered;
   }
 
   // Verify Amex session is active before starting the sweep
