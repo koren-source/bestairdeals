@@ -1847,10 +1847,12 @@ function buildParams() {
     }
   } else {
     params.outbound = { month: document.getElementById('sfMonth').value };
-    params.trip_length = {
-      min: parseInt(document.getElementById('sfMinDays').value, 10),
-      max: parseInt(document.getElementById('sfMaxDays').value, 10),
-    };
+    if (tripType === 'roundtrip') {
+      params.trip_length = {
+        min: parseInt(document.getElementById('sfMinDays').value, 10),
+        max: parseInt(document.getElementById('sfMaxDays').value, 10),
+      };
+    }
   }
   return params;
 }
@@ -2160,8 +2162,9 @@ function updateLiveResults(combos) {
         cabin: params.cabin,
         pax: params.pax,
         outbound: params.outbound || {},
-        'return': params['return'] || {},
-        trip_length: params.trip_length || {},
+        'return': params['return'] || null,
+        tripType: params.tripType || 'roundtrip',
+        trip_length: params.trip_length || null,
       },
       programs: {},
       timestamp: new Date().toLocaleString(),
@@ -2378,9 +2381,10 @@ function renderTopDeals() {
   var html = '';
 
   top3.forEach(function(combo, i) {
+    var isOneWay = !combo['return'];
     var progOut = progName(combo.outbound.program);
-    var progRet = progName(combo['return'].program);
-    var totalStops = (combo.outbound.stops || 0) + (combo['return'].stops || 0);
+    var progRet = isOneWay ? '' : progName(combo['return'].program);
+    var totalStops = (combo.outbound.stops || 0) + (isOneWay ? 0 : (combo['return'].stops || 0));
     var nonstop = totalStops === 0;
 
     var vc = verdictColor(combo.verdict);
@@ -2390,24 +2394,42 @@ function renderTopDeals() {
 
     var cabinForUrl = currentViewCabin || DATA.config.cabin;
     var outUrl = pointMeUrl(combo.outbound.origin, combo.outbound.destination, combo.outbound.date, cabinForUrl, DATA.config.pax);
-    var retUrl = pointMeUrl(combo['return'].origin, combo['return'].destination, combo['return'].date, cabinForUrl, DATA.config.pax);
+
+    var routeHtml = isOneWay
+      ? combo.outbound.origin + ' &rarr; ' + combo.outbound.destination
+      : combo.outbound.origin + ' &rarr; ' + combo.outbound.destination + ' &rarr; ' + combo['return'].destination;
+
+    var datesHtml = isOneWay
+      ? combo.outbound.date
+      : combo.outbound.date + ' &rarr; ' + combo['return'].date;
+
+    var metaHtml = isOneWay
+      ? '<span>' + totalStops + ' stop' + (totalStops !== 1 ? 's' : '') + '</span>'
+        + (nonstop ? '<span class="nonstop-badge">NONSTOP</span>' : '')
+      : '<span>' + combo.stay_days + ' days</span>'
+        + '<span class="meta-sep">&middot;</span>'
+        + '<span>' + totalStops + ' stop' + (totalStops !== 1 ? 's' : '') + '</span>'
+        + (nonstop ? '<span class="nonstop-badge">NONSTOP</span>' : '');
+
+    var programsHtml = isOneWay
+      ? '<span>' + progOut + '</span>'
+      : '<span>Out: ' + progOut + '</span><span>Ret: ' + progRet + '</span>';
+
+    var actionsHtml = '<a class="btn btn-blue" href="' + outUrl + '" target="_blank" rel="noopener">Book ' + combo.outbound.origin + '→' + combo.outbound.destination + '</a>';
+    if (!isOneWay) {
+      var retUrl = pointMeUrl(combo['return'].origin, combo['return'].destination, combo['return'].date, cabinForUrl, DATA.config.pax);
+      actionsHtml += '<a class="btn btn-blue" href="' + retUrl + '" target="_blank" rel="noopener">Book ' + combo['return'].origin + '→' + combo['return'].destination + '</a>';
+    }
+    actionsHtml += '<a class="btn btn-green" href="' + AMEX_TRANSFER_URL + '" target="_blank" rel="noopener">Transfer MR</a>';
 
     html += '<div class="deal-card">'
       + '<div class="deal-card-header">'
       + '<span class="deal-rank">#' + (i + 1) + '</span>'
       + vBadge
       + '</div>'
-      + '<div class="deal-route">' + combo.outbound.origin + ' &rarr; ' + combo.outbound.destination + ' &rarr; ' + combo['return'].destination + '</div>'
-      + '<div class="deal-meta">'
-      + '<span>' + combo.stay_days + ' days</span>'
-      + '<span class="meta-sep">&middot;</span>'
-      + '<span>' + totalStops + ' stop' + (totalStops !== 1 ? 's' : '') + '</span>'
-      + (nonstop ? '<span class="nonstop-badge">NONSTOP</span>' : '')
-      + '</div>'
-      + '<div class="deal-programs">'
-      + '<span>Out: ' + progOut + '</span>'
-      + '<span>Ret: ' + progRet + '</span>'
-      + '</div>'
+      + '<div class="deal-route">' + routeHtml + '</div>'
+      + '<div class="deal-meta">' + metaHtml + '</div>'
+      + '<div class="deal-programs">' + programsHtml + '</div>'
       + '<div class="deal-numbers">'
       + '<div class="deal-number-block"><div class="deal-number-label">MR Points</div><div class="deal-number-value">' + combo.total_pts.toLocaleString('en-US') + '</div></div>'
       + '<div class="deal-number-block"><div class="deal-number-label">Fees</div><div class="deal-number-value">$' + combo.total_fees.toFixed(2) + '</div></div>'
@@ -2416,12 +2438,8 @@ function renderTopDeals() {
       + '<div class="deal-number-block"><div class="deal-number-label">Award Cost</div><div class="deal-number-value">' + (combo.award_cost_usd != null ? '$' + combo.award_cost_usd.toFixed(2) : 'N/A') + '</div></div>'
       + '<div class="deal-number-block"><div class="deal-number-label">Cash Price</div><div class="deal-number-value">' + (combo.cash_price_usd != null ? '$' + Number(combo.cash_price_usd).toLocaleString('en-US') : 'N/A') + '</div></div>'
       + '</div>'
-      + '<div class="deal-dates"><span>' + combo.outbound.date + ' &rarr; ' + combo['return'].date + '</span></div>'
-      + '<div class="deal-actions">'
-      + '<a class="btn btn-blue" href="' + outUrl + '" target="_blank" rel="noopener">Book ' + combo.outbound.origin + '→' + combo.outbound.destination + '</a>'
-      + '<a class="btn btn-blue" href="' + retUrl + '" target="_blank" rel="noopener">Book ' + combo['return'].origin + '→' + combo['return'].destination + '</a>'
-      + '<a class="btn btn-green" href="' + AMEX_TRANSFER_URL + '" target="_blank" rel="noopener">Transfer MR</a>'
-      + '</div>'
+      + '<div class="deal-dates"><span>' + datesHtml + '</span></div>'
+      + '<div class="deal-actions">' + actionsHtml + '</div>'
       + '</div>';
   });
 
@@ -2442,15 +2460,24 @@ function renderTopDeals() {
 
   next12.forEach(function(combo, i) {
     var rank = i + 4;
-    var totalStops = (combo.outbound.stops || 0) + (combo['return'].stops || 0);
+    var isOneWay = !combo['return'];
+    var totalStops = (combo.outbound.stops || 0) + (isOneWay ? 0 : (combo['return'].stops || 0));
     var stopsLabel = totalStops === 0 ? 'nonstop' : totalStops + ' stop' + (totalStops !== 1 ? 's' : '');
     var tierLabel = combo.confirmed ? 'confirmed' : 'likely';
+
+    var routeHtml = isOneWay
+      ? combo.outbound.origin + ' &rarr; ' + combo.outbound.destination
+      : combo.outbound.origin + ' &rarr; ' + combo.outbound.destination + ' &rarr; ' + combo['return'].destination;
+
+    var metaHtml = isOneWay
+      ? combo.outbound.date + ' &middot; ' + stopsLabel + ' &middot; ' + tierLabel
+      : combo.outbound.date + ' &rarr; ' + combo['return'].date + ' &middot; ' + combo.stay_days + 'd &middot; ' + stopsLabel + ' &middot; ' + tierLabel;
 
     listHtml += '<div class="next-deal-row">'
       + '<span class="next-deal-rank">#' + rank + '</span>'
       + '<div class="next-deal-info">'
-      + '<div class="next-deal-route">' + combo.outbound.origin + ' &rarr; ' + combo.outbound.destination + ' &rarr; ' + combo['return'].destination + '</div>'
-      + '<div class="next-deal-meta">' + combo.outbound.date + ' &rarr; ' + combo['return'].date + ' &middot; ' + combo.stay_days + 'd &middot; ' + stopsLabel + ' &middot; ' + tierLabel + '</div>'
+      + '<div class="next-deal-route">' + routeHtml + '</div>'
+      + '<div class="next-deal-meta">' + metaHtml + '</div>'
       + '</div>'
       + '<div>'
       + '<div class="next-deal-points">' + combo.total_pts.toLocaleString('en-US') + ' MR</div>'
@@ -2516,12 +2543,12 @@ function renderTable() {
     else if (currentSort === 'value') { va = a.value_ratio || 999; vb = b.value_ratio || 999; }
     else if (currentSort === 'rank') { va = a.rank; vb = b.rank; }
     else if (currentSort === 'outDate') { va = a.outbound.date; vb = b.outbound.date; }
-    else if (currentSort === 'retDate') { va = a['return'].date; vb = b['return'].date; }
-    else if (currentSort === 'days') { va = a.stay_days; vb = b.stay_days; }
+    else if (currentSort === 'retDate') { va = a['return'] ? a['return'].date : ''; vb = b['return'] ? b['return'].date : ''; }
+    else if (currentSort === 'days') { va = a.stay_days || 0; vb = b.stay_days || 0; }
     else if (currentSort === 'pts') { va = a.total_pts; vb = b.total_pts; }
     else if (currentSort === 'stops') {
-      va = (a.outbound.stops || 0) + (a['return'].stops || 0);
-      vb = (b.outbound.stops || 0) + (b['return'].stops || 0);
+      va = (a.outbound.stops || 0) + (a['return'] ? (a['return'].stops || 0) : 0);
+      vb = (b.outbound.stops || 0) + (b['return'] ? (b['return'].stops || 0) : 0);
     }
     else if (currentSort === 'awardCost') { va = a.award_cost_usd || 999999; vb = b.award_cost_usd || 999999; }
     else if (currentSort === 'cashPrice') { va = a.cash_price_usd || 999999; vb = b.cash_price_usd || 999999; }
@@ -2542,7 +2569,7 @@ function renderTable() {
   function isVisible(c) {
     if (filterTier === 'confirmed' && !c.confirmed) return false;
     if (filterTier === 'likely' && c.confirmed) return false;
-    var stops = (c.outbound.stops || 0) + (c['return'].stops || 0);
+    var stops = (c.outbound.stops || 0) + (c['return'] ? (c['return'].stops || 0) : 0);
     if (filterStops === '0' && stops !== 0) return false;
     if (filterStops === '1' && stops > 1) return false;
     if (filterAirport !== 'all' && c.outbound.destination !== filterAirport) return false;
@@ -2552,15 +2579,16 @@ function renderTable() {
   function renderRow(c) {
     var vis = isVisible(c);
     if (vis) visibleCount++;
-    var stops = (c.outbound.stops || 0) + (c['return'].stops || 0);
+    var isOneWay = !c['return'];
+    var stops = (c.outbound.stops || 0) + (isOneWay ? 0 : (c['return'].stops || 0));
     return '<tr class="' + (vis ? '' : 'hidden') + '" data-confirmed="' + c.confirmed + '" data-dest="' + c.outbound.destination + '" data-stops="' + stops + '">'
       + '<td>' + c.rank + '</td>'
       + '<td>' + tierBadge(c.confirmed) + '</td>'
       + '<td>' + c.outbound.date + '</td>'
-      + '<td>' + c['return'].date + '</td>'
-      + '<td>' + c.stay_days + '</td>'
+      + '<td>' + (isOneWay ? '—' : c['return'].date) + '</td>'
+      + '<td>' + (isOneWay ? '—' : c.stay_days) + '</td>'
       + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + progName(c.outbound.program) + '</td>'
-      + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + progName(c['return'].program) + '</td>'
+      + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + (isOneWay ? '—' : progName(c['return'].program)) + '</td>'
       + '<td>' + fmt(c.total_pts) + '</td>'
       + '<td>' + fmtUsd(c.total_fees) + '</td>'
       + '<td>' + fmtUsd(c.award_cost_usd) + '</td>'
@@ -2605,6 +2633,7 @@ function renderHeatmap(scoredOverride) {
   var maxPts = -Infinity;
 
   scored.forEach(function(c) {
+    if (!c['return']) return; // skip one-way combos in heatmap
     var key = c.outbound.date + '|' + c['return'].date;
     if (!lookup[key] || c.total_pts < lookup[key].pts) {
       lookup[key] = { pts: c.total_pts, fees: c.total_fees };

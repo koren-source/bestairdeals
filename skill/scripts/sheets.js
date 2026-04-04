@@ -85,12 +85,15 @@ const AMEX_TRANSFER_URL = 'https://global.americanexpress.com/rewards/transfer';
  */
 function bookingInstructions(combo) {
   const progOut = combo.outbound.program;
-  const progRet = combo.return.program;
+  const isOneWay = !combo.return;
   const steps = [];
 
   steps.push(`1) Transfer MR to ${PROGRAMS[progOut]?.name ?? progOut} for outbound.`);
-  if (progOut !== progRet) {
-    steps.push(`2) Transfer MR to ${PROGRAMS[progRet]?.name ?? progRet} for return.`);
+  if (!isOneWay) {
+    const progRet = combo.return.program;
+    if (progOut !== progRet) {
+      steps.push(`2) Transfer MR to ${PROGRAMS[progRet]?.name ?? progRet} for return.`);
+    }
   }
   steps.push(`Book on airline site or via point.me booking button.`);
 
@@ -102,10 +105,12 @@ function bookingInstructions(combo) {
  */
 function bookingLinks(combo, pax, cabin) {
   const out = combo.outbound;
-  const ret = combo.return;
   const links = [];
   links.push(`Outbound: ${pointMeUrl(out.origin, out.destination, out.date, cabin, pax)}`);
-  links.push(`Return: ${pointMeUrl(ret.origin, ret.destination, ret.date, cabin, pax)}`);
+  if (combo.return) {
+    const ret = combo.return;
+    links.push(`Return: ${pointMeUrl(ret.origin, ret.destination, ret.date, cabin, pax)}`);
+  }
   links.push(`Transfer MR: ${AMEX_TRANSFER_URL}`);
   return links.join(' | ');
 }
@@ -116,16 +121,17 @@ function bookingLinks(combo, pax, cabin) {
 function formatResultRows(combos, startRank, config) {
   return combos.map((combo, i) => {
     const rank = startRank + i;
+    const isOneWay = !combo.return;
     return csvRow([
       rank,
       combo.confirmed ? "Confirmed" : "Likely",
       combo.outbound.date,
-      combo.return.date,
-      combo.stay_days,
+      isOneWay ? "" : combo.return.date,
+      isOneWay ? "" : combo.stay_days,
       PROGRAMS[combo.outbound.program]?.name ?? combo.outbound.program,
-      PROGRAMS[combo.return.program]?.name ?? combo.return.program,
+      isOneWay ? "" : (PROGRAMS[combo.return.program]?.name ?? combo.return.program),
       combo.outbound.airline ?? "",
-      combo.return.airline ?? "",
+      isOneWay ? "" : (combo.return.airline ?? ""),
       combo.total_pts,
       combo.total_fees.toFixed(2),
       combo.award_cost_usd != null ? combo.award_cost_usd.toFixed(2) : "",
@@ -136,7 +142,7 @@ function formatResultRows(combos, startRank, config) {
       (combo.flags ?? []).join("; "),
       combo.source_tag ?? "",
       combo.outbound.stops ?? 0,
-      combo.return.stops ?? 0,
+      isOneWay ? "" : (combo.return.stops ?? 0),
       combo.summary ?? "",
       bookingInstructions(combo),
       bookingLinks(combo, config.pax, config.cabin),
@@ -234,13 +240,17 @@ export function writeToSheet(results, nearMisses, config) {
 function buildHeatmap(results) {
   if (!results.length) return null;
 
+  // Filter out one-way combos (no return leg)
+  const rtResults = results.filter((c) => c.return);
+  if (!rtResults.length) return null;
+
   // Collect unique dates
-  const outDates = [...new Set(results.map((c) => c.outbound.date))].sort();
-  const retDates = [...new Set(results.map((c) => c.return.date))].sort();
+  const outDates = [...new Set(rtResults.map((c) => c.outbound.date))].sort();
+  const retDates = [...new Set(rtResults.map((c) => c.return.date))].sort();
 
   // Build min-score lookup: "outDate|retDate" -> min score
   const lookup = new Map();
-  for (const c of results) {
+  for (const c of rtResults) {
     const key = `${c.outbound.date}|${c.return.date}`;
     const prev = lookup.get(key);
     if (prev === undefined || c.score < prev) {

@@ -53,7 +53,7 @@ export function writeWebData(scored, nearMisses, config, programs) {
       rank: i + 1,
       confirmed: c.confirmed,
       outbound: slimLeg(c.outbound),
-      return: slimLeg(c.return),
+      return: c.return ? slimLeg(c.return) : null,
       stay_days: c.stay_days,
       total_pts: c.total_pts,
       total_fees: c.total_fees,
@@ -68,7 +68,7 @@ export function writeWebData(scored, nearMisses, config, programs) {
     nearMisses: (nearMisses || []).slice(0, 50).map((nm) => ({
       reason: nm.reason,
       outbound: slimLeg(nm.outbound),
-      return: slimLeg(nm.return),
+      return: nm.return ? slimLeg(nm.return) : null,
       stay_days: nm.stay_days,
       total_pts: nm.total_pts,
       total_fees: nm.total_fees,
@@ -79,8 +79,9 @@ export function writeWebData(scored, nearMisses, config, programs) {
       cabin: config.cabin,
       pax: config.pax,
       outbound: config.outbound,
-      return: config.return,
-      trip_length: config.trip_length,
+      return: config.return || null,
+      tripType: config.tripType || 'roundtrip',
+      trip_length: config.trip_length || null,
     },
     programs: Object.fromEntries(
       Object.entries(programs).map(([k, v]) => [k, { name: v.name }])

@@ -51,9 +51,9 @@ export function compareWithHistory(currentCombos, historyDir) {
   // Normalize current combos to history format for comparison
   const currentEntries = currentCombos.map((combo) => ({
     date_out: combo.outbound.date,
-    date_ret: combo.return.date,
+    date_ret: combo.return ? combo.return.date : '',
     program_out: combo.outbound.program,
-    program_ret: combo.return.program,
+    program_ret: combo.return ? combo.return.program : '',
     total_pts: combo.total_pts,
     total_fees: combo.total_fees,
     score: combo.score,

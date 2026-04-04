@@ -129,12 +129,15 @@ export async function searchSeatsAero(config, programs) {
   const cabinPrefix = CABIN_PREFIX[config.cabin] || 'Y';
   const results = [];
 
+  const isOneWay = config.tripType === 'oneway';
+
   // Count total calls for logging
   const sluggedPrograms = Object.entries(programs).filter(([, p]) => p.slug != null);
-  const totalCalls = sluggedPrograms.length * config.destinations.length * 2;
+  const directions = isOneWay ? 1 : 2;
+  const totalCalls = sluggedPrograms.length * config.destinations.length * directions;
   let callCount = 0;
 
-  console.log(`[seats-aero] Starting sweep: ${sluggedPrograms.length} programs x ${config.destinations.length} destinations x 2 directions = ${totalCalls} API calls`);
+  console.log(`[seats-aero] Starting sweep: ${sluggedPrograms.length} programs x ${config.destinations.length} destinations x ${directions} direction${isOneWay ? '' : 's'} = ${totalCalls} API calls`);
 
   for (const [programKey, program] of sluggedPrograms) {
     for (const dest of config.destinations) {
@@ -163,30 +166,32 @@ export async function searchSeatsAero(config, programs) {
 
       await sleep(DELAY_MS);
 
-      // Return: dest -> origin
-      try {
-        callCount++;
-        console.log(`[seats-aero] (${callCount}/${totalCalls}) ${programKey} ${dest}->${config.origin} return`);
+      // Return: dest -> origin (skip for one-way)
+      if (!isOneWay) {
+        try {
+          callCount++;
+          console.log(`[seats-aero] (${callCount}/${totalCalls}) ${programKey} ${dest}->${config.origin} return`);
 
-        const returnData = await fetchAvailability({
-          origin: dest,
-          destination: config.origin,
-          cabin: config.cabin,
-          startDate: config.return.start,
-          endDate: config.return.end,
-          slug: program.slug,
-          apiKey,
-        });
+          const returnData = await fetchAvailability({
+            origin: dest,
+            destination: config.origin,
+            cabin: config.cabin,
+            startDate: config.return.start,
+            endDate: config.return.end,
+            slug: program.slug,
+            apiKey,
+          });
 
-        for (const item of returnData) {
-          const record = mapRecord(item, 'return', dest, config.origin, programKey, program, cabinPrefix);
-          if (record) results.push(record);
+          for (const item of returnData) {
+            const record = mapRecord(item, 'return', dest, config.origin, programKey, program, cabinPrefix);
+            if (record) results.push(record);
+          }
+        } catch (err) {
+          console.warn(`[seats-aero] WARN: ${programKey} ${dest}->${config.origin} return failed: ${err.message}`);
         }
-      } catch (err) {
-        console.warn(`[seats-aero] WARN: ${programKey} ${dest}->${config.origin} return failed: ${err.message}`);
-      }
 
-      await sleep(DELAY_MS);
+        await sleep(DELAY_MS);
+      }
     }
   }
 

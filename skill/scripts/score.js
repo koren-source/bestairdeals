@@ -10,14 +10,10 @@
  * @returns {object} scored combo with score and flags[]
  */
 export function scoreCombo(combo, config) {
-  const total_stops = (combo.outbound.stops || 0) + (combo.return.stops || 0);
-  const is_cross_airport = combo.outbound.destination !== combo.return.origin;
+  const isOneWay = combo.return === null;
+  const total_stops = (combo.outbound.stops || 0) + (isOneWay ? 0 : (combo.return.stops || 0));
+  const is_cross_airport = !isOneWay && combo.outbound.destination !== combo.return.origin;
 
-  // lower = better
-  // fee_multiplier: how many MR points is $1 in fees worth?
-  //   10 = points-first (fees are a tiebreaker)
-  //   50 = balanced
-  //  100 = fees-averse (treats $1 = 100 MR)
   const score = combo.total_pts
     + (combo.total_fees * config.fee_multiplier)
     + (total_stops * config.stops_penalty)
@@ -34,10 +30,10 @@ export function scoreCombo(combo, config) {
   }
 
   // Heuristic: stops=0 from seats_aero likely means "unknown", not nonstop
-  if (
-    (combo.outbound.stops === 0 && combo.outbound.source === "seats_aero") ||
-    (combo.return.stops === 0 && combo.return.source === "seats_aero")
-  ) {
+  if (combo.outbound.stops === 0 && combo.outbound.source === "seats_aero") {
+    flags.push("STOPS_UNKNOWN");
+  }
+  if (!isOneWay && combo.return.stops === 0 && combo.return.source === "seats_aero") {
     flags.push("STOPS_UNKNOWN");
   }
 
@@ -54,8 +50,13 @@ export function scoreCombo(combo, config) {
  */
 export function buildSummary(combo, rank, totalCombos, programs) {
   const progOut = programs[combo.outbound.program]?.name ?? combo.outbound.program;
-  const progRet = programs[combo.return.program]?.name ?? combo.return.program;
   const stopsOut = combo.outbound.stops ?? 0;
+
+  if (combo.return === null) {
+    return `${progOut} ${combo.outbound.date}. ${combo.total_pts} MR one-way. $${combo.total_fees} fees. ${stopsOut}-stop. Score: ${combo.score} (rank #${rank} of ${totalCombos}).`;
+  }
+
+  const progRet = programs[combo.return.program]?.name ?? combo.return.program;
   const stopsRet = combo.return.stops ?? 0;
 
   return `${progOut} outbound ${combo.outbound.date} + ${progRet} return ${combo.return.date}. ${combo.total_pts} MR for ${combo.outbound.seats_available !== null ? "confirmed" : "likely"} ${combo.stay_days}-day trip. $${combo.total_fees} fees. ${stopsOut}-stop out, ${stopsRet}-stop back. Score: ${combo.score} (rank #${rank} of ${totalCombos}).`;

@@ -14,7 +14,7 @@ import 'dotenv/config';
 import { searchSeatsAero } from './seats-aero.js';
 import { searchPointMe } from './pointme.js';
 import { mergeAndDedup } from './merge.js';
-import { buildCombos, buildNearMisses } from './combo.js';
+import { buildCombos, buildOneWayCombos, buildNearMisses } from './combo.js';
 import { scoreCombo, buildSummary } from './score.js';
 import { PROGRAMS } from './programs.js';
 import { writeToSheet } from './sheets.js';
@@ -40,10 +40,13 @@ import { loadConfig } from './config.js';
  * @returns {{ seatsResults: object[], pointmeResults: object[], totalRecords: number }}
  */
 export async function searchCore(config, programs, callbacks = {}) {
-  console.log(`[search] Trip: ${config.origin} -> ${config.destinations.join(', ')} | ${config.cabin} | ${config.pax} pax`);
+  const isOneWay = config.tripType === 'oneway';
+  console.log(`[search] Trip: ${config.origin} -> ${config.destinations.join(', ')} | ${config.cabin} | ${config.pax} pax | ${isOneWay ? 'one-way' : 'round-trip'}`);
   console.log(`[search] Outbound: ${config.outbound.start} to ${config.outbound.end}`);
-  console.log(`[search] Return:   ${config.return.start} to ${config.return.end}`);
-  console.log(`[search] Stay:     ${config.trip_length.min}-${config.trip_length.max} days`);
+  if (!isOneWay) {
+    console.log(`[search] Return:   ${config.return.start} to ${config.return.end}`);
+    console.log(`[search] Stay:     ${config.trip_length.min}-${config.trip_length.max} days`);
+  }
 
   console.log('\n[search] Launching parallel sweeps...');
 
@@ -98,11 +101,14 @@ export function mergeScoreAndSort(seatsResults, pointmeResults, config, programs
   const merged = mergeAndDedup(seatsResults, pointmeResults, programs);
   console.log(`[search] After merge: ${merged.length} unique records`);
 
+  const isOneWay = config.tripType === 'oneway';
   const outbound = merged.filter((r) => r.direction === 'outbound');
-  const returns = merged.filter((r) => r.direction === 'return');
-  console.log(`[search] Outbound: ${outbound.length} | Return: ${returns.length}`);
+  const returns = isOneWay ? [] : merged.filter((r) => r.direction === 'return');
+  console.log(`[search] Outbound: ${outbound.length} | Return: ${returns.length}${isOneWay ? ' (one-way)' : ''}`);
 
-  const combos = buildCombos(outbound, returns, config);
+  const combos = isOneWay
+    ? buildOneWayCombos(outbound, config)
+    : buildCombos(outbound, returns, config);
   console.log(`[search] Valid combos: ${combos.length}`);
 
   if (combos.length === 0) {
@@ -116,7 +122,7 @@ export function mergeScoreAndSort(seatsResults, pointmeResults, config, programs
     c.summary = buildSummary(c, i + 1, scored.length, programs);
   });
 
-  const nearMisses = buildNearMisses(outbound, returns, config, scored);
+  const nearMisses = isOneWay ? [] : buildNearMisses(outbound, returns, config, scored);
   console.log(`[search] Near-misses: ${nearMisses.length}`);
 
   return { scored, outbound, returns, nearMisses, totalMerged: merged.length };
@@ -145,12 +151,18 @@ export async function writeOutputs(scored, nearMisses, config, programs, totalRe
     for (let i = 0; i < topWithCash.length; i++) {
       const c = topWithCash[i];
       const progOut = programs[c.outbound.program]?.name ?? c.outbound.program;
-      const progRet = programs[c.return.program]?.name ?? c.return.program;
-      console.log(`  #${i + 1}: ${progOut} ${c.outbound.date} → ${progRet} ${c.return.date} (${c.stay_days}d)`);
+      if (c.return) {
+        const progRet = programs[c.return.program]?.name ?? c.return.program;
+        console.log(`  #${i + 1}: ${progOut} ${c.outbound.date} → ${progRet} ${c.return.date} (${c.stay_days}d)`);
+      } else {
+        console.log(`  #${i + 1}: ${progOut} ${c.outbound.date} (one-way)`);
+      }
       console.log(`      ${c.total_pts.toLocaleString()} MR + $${c.total_fees.toFixed(2)} fees = $${c.award_cost_usd} award cost`);
       console.log(`      Cash price: ${c.cash_price_usd != null ? '$' + c.cash_price_usd : 'N/A'} | Value: ${c.value_ratio ?? '?'}x | ${c.verdict}`);
       console.log(`      Book outbound: https://amex.point.me/results?departureIata=${c.outbound.origin}&arrivalIata=${c.outbound.destination}&departureDate=${c.outbound.date}&classOfService=${config.cabin}&legType=oneWay&passengers=${config.pax}`);
-      console.log(`      Book return:   https://amex.point.me/results?departureIata=${c.return.origin}&arrivalIata=${c.return.destination}&departureDate=${c.return.date}&classOfService=${config.cabin}&legType=oneWay&passengers=${config.pax}`);
+      if (c.return) {
+        console.log(`      Book return:   https://amex.point.me/results?departureIata=${c.return.origin}&arrivalIata=${c.return.destination}&departureDate=${c.return.date}&classOfService=${config.cabin}&legType=oneWay&passengers=${config.pax}`);
+      }
       console.log(`      Transfer MR:   https://global.americanexpress.com/rewards/transfer`);
     }
   } catch (err) {

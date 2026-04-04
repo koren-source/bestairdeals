@@ -195,7 +195,7 @@ app.post('/search', async (c) => {
           score: scored[0].score,
           total_pts: scored[0].total_pts,
           total_fees: scored[0].total_fees,
-          programs: `${scored[0].outbound.program}+${scored[0].return.program}`,
+          programs: scored[0].return ? `${scored[0].outbound.program}+${scored[0].return.program}` : scored[0].outbound.program,
         } : null,
       });
 
