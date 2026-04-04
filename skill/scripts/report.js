@@ -184,7 +184,8 @@ export function writeReport(scored, nearMisses, config, programs) {
           <span>${combo.outbound.date} &rarr; ${combo.return.date}</span>
         </div>
         <div class="deal-actions">
-          <a class="btn btn-blue" href="${outUrl}" target="_blank" rel="noopener">Book on point.me</a>
+          <a class="btn btn-blue" href="${outUrl}" target="_blank" rel="noopener">Book ${combo.outbound.origin}&rarr;${combo.outbound.destination}</a>
+          <a class="btn btn-blue" href="${retUrl}" target="_blank" rel="noopener">Book ${combo.return.origin}&rarr;${combo.return.destination}</a>
           <a class="btn btn-green" href="${AMEX_TRANSFER_URL}" target="_blank" rel="noopener">Transfer MR</a>
         </div>
       </div>`;
