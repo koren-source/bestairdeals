@@ -4,3 +4,4 @@ output/
 *.log
 .gstack/
 web/config.js
+.vercel
