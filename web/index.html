@@ -160,16 +160,16 @@
     color: #71717A;
     font-family: ui-monospace, monospace;
   }
-  .deal-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .deal-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 
   .btn {
     flex: 1;
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    padding: 10px 16px;
+    padding: 8px 12px;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     text-decoration: none;
     cursor: pointer;
@@ -655,7 +655,8 @@ function renderTopDeals() {
       + '</div>'
       + '<div class="deal-dates"><span>' + combo.outbound.date + ' &rarr; ' + combo['return'].date + '</span></div>'
       + '<div class="deal-actions">'
-      + '<a class="btn btn-blue" href="' + outUrl + '" target="_blank" rel="noopener">Book on point.me</a>'
+      + '<a class="btn btn-blue" href="' + outUrl + '" target="_blank" rel="noopener">Book ' + combo.outbound.origin + '→' + combo.outbound.destination + '</a>'
+      + '<a class="btn btn-blue" href="' + retUrl + '" target="_blank" rel="noopener">Book ' + combo['return'].origin + '→' + combo['return'].destination + '</a>'
       + '<a class="btn btn-green" href="' + AMEX_TRANSFER_URL + '" target="_blank" rel="noopener">Transfer MR</a>'
       + '</div>'
       + '</div>';
