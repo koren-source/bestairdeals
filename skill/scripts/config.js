@@ -102,6 +102,28 @@ export function validateSearchParams(params) {
   }
 
   // Exact mode: params already have outbound/return date ranges
+  const tripType = params.tripType || 'roundtrip';
+
+  if (tripType === 'oneway' && !params.return) {
+    throw new Error('One-way searches are not supported yet. Please select round-trip.');
+  }
+
+  // Compute trip_length from dates if not provided (exact mode doesn't need it from the form)
+  let tripLength = params.trip_length;
+  if (!tripLength || typeof tripLength.min !== 'number' || typeof tripLength.max !== 'number') {
+    if (params.outbound?.start && params.return?.start) {
+      const outStart = new Date(params.outbound.start);
+      const outEnd = new Date(params.outbound.end || params.outbound.start);
+      const retStart = new Date(params.return.start);
+      const retEnd = new Date(params.return.end || params.return.start);
+      const minDays = Math.round((retStart - outEnd) / (1000 * 60 * 60 * 24));
+      const maxDays = Math.round((retEnd - outStart) / (1000 * 60 * 60 * 24));
+      tripLength = { min: Math.max(1, minDays), max: Math.max(1, maxDays) };
+    } else {
+      tripLength = { min: 1, max: 365 };
+    }
+  }
+
   const config = {
     origin: params.origin,
     destinations: params.destinations,
@@ -109,7 +131,7 @@ export function validateSearchParams(params) {
     pax: params.pax,
     outbound: params.outbound,
     return: params.return,
-    trip_length: params.trip_length,
+    trip_length: tripLength,
   };
   return validateConfig(config);
 }
