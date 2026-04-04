@@ -1,0 +1,18 @@
+{
+  "origin": "LAS",
+  "destinations": ["LHR", "LGW"],
+  "cabin": "economy",
+  "pax": 2,
+  "outbound": { "start": "2026-06-01", "end": "2026-07-14" },
+  "return": { "start": "2026-06-19", "end": "2026-08-04" },
+  "trip_length": { "min": 18, "max": 21 },
+  "fee_multiplier": 100,
+  "high_fee_threshold": 800,
+  "stops_penalty": 5000,
+  "cross_airport_penalty": 5000,
+  "sweep_mode": "exhaustive",
+  "notifications": {
+    "slack_webhook": null,
+    "email": null
+  }
+}
