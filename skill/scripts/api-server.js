@@ -31,8 +31,16 @@ const HISTORY_FILE = 'output/search-history.jsonl';
 
 const app = new Hono();
 
-// CORS
-app.use('/*', cors({ origin: VERCEL_ORIGIN }));
+// CORS — allow Vercel production + preview deploys
+app.use('/*', cors({
+  origin: (origin) => {
+    if (!origin) return VERCEL_ORIGIN; // non-browser requests
+    if (VERCEL_ORIGIN === '*') return '*';
+    if (origin === VERCEL_ORIGIN) return origin;
+    if (origin.endsWith('.vercel.app')) return origin;
+    return VERCEL_ORIGIN;
+  },
+}));
 
 // Auth middleware
 app.use('/*', async (c, next) => {
