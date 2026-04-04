@@ -18,7 +18,6 @@ export function writeHistory(scoredCombos, config) {
   mkdirSync(HISTORY_DIR, { recursive: true });
 
   const now = new Date();
-  const ts = now.toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
   // Format: YYYY-MM-DD-HHmmss
   const fileName = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jsonl`;
 

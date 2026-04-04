@@ -119,29 +119,39 @@ for (const [key, prog] of Object.entries(PROGRAMS)) {
   }
 }
 // Extra aliases point.me might use
+PROGRAM_NAME_MAP['aer lingus aerclub'] = 'aerlingus';
+PROGRAM_NAME_MAP['aer lingus'] = 'aerlingus';
+PROGRAM_NAME_MAP['aerclub'] = 'aerlingus';
+PROGRAM_NAME_MAP['aeromexico'] = 'aeromexico';
+PROGRAM_NAME_MAP['aeromexico rewards'] = 'aeromexico';
+PROGRAM_NAME_MAP['air canada aeroplan'] = 'aeroplan';
 PROGRAM_NAME_MAP['air france-klm flying blue'] = 'flyingblue';
 PROGRAM_NAME_MAP['air france klm flying blue'] = 'flyingblue';
 PROGRAM_NAME_MAP['klm flying blue'] = 'flyingblue';
-PROGRAM_NAME_MAP['virgin atlantic flying club'] = 'virgin';
+PROGRAM_NAME_MAP['flyingblue'] = 'flyingblue';
+PROGRAM_NAME_MAP['ana mileage club'] = 'ana';
+PROGRAM_NAME_MAP['avianca lifemiles'] = 'lifemiles';
 PROGRAM_NAME_MAP['british airways avios'] = 'avios';
 PROGRAM_NAME_MAP['british airways executive club'] = 'avios';
-PROGRAM_NAME_MAP['iberia plus'] = 'iberia';
-PROGRAM_NAME_MAP['iberia avios'] = 'iberia';
-PROGRAM_NAME_MAP['air canada aeroplan'] = 'aeroplan';
-PROGRAM_NAME_MAP['ana mileage club'] = 'ana';
-PROGRAM_NAME_MAP['singapore airlines krisflyer'] = 'singapore';
-PROGRAM_NAME_MAP['krisflyer'] = 'singapore';
-PROGRAM_NAME_MAP['delta skymiles'] = 'delta';
-PROGRAM_NAME_MAP['etihad guest'] = 'etihad';
-PROGRAM_NAME_MAP['emirates skywards'] = 'emirates';
+PROGRAM_NAME_MAP['the british airways club'] = 'avios';
 PROGRAM_NAME_MAP['cathay pacific asia miles'] = 'cathay';
 PROGRAM_NAME_MAP['asia miles'] = 'cathay';
-PROGRAM_NAME_MAP['avianca lifemiles'] = 'lifemiles';
-PROGRAM_NAME_MAP['hawaiian airlines'] = 'hawaiian';
+PROGRAM_NAME_MAP['delta skymiles'] = 'delta';
+PROGRAM_NAME_MAP['emirates skywards'] = 'emirates';
+PROGRAM_NAME_MAP['etihad guest'] = 'etihad';
+PROGRAM_NAME_MAP['iberia plus'] = 'iberia';
+PROGRAM_NAME_MAP['iberia avios'] = 'iberia';
+PROGRAM_NAME_MAP['club iberia plus'] = 'iberia';
 PROGRAM_NAME_MAP['jetblue trueblue'] = 'jetblue';
 PROGRAM_NAME_MAP['jetblue'] = 'jetblue';
-PROGRAM_NAME_MAP['copa airlines connectmiles'] = 'copa';
-PROGRAM_NAME_MAP['connectmiles'] = 'copa';
+PROGRAM_NAME_MAP['qantas frequent flyer'] = 'qantas';
+PROGRAM_NAME_MAP['qantas'] = 'qantas';
+PROGRAM_NAME_MAP['qatar airways privilege club'] = 'qatar';
+PROGRAM_NAME_MAP['qatar airways'] = 'qatar';
+PROGRAM_NAME_MAP['privilege club'] = 'qatar';
+PROGRAM_NAME_MAP['singapore airlines krisflyer'] = 'singapore';
+PROGRAM_NAME_MAP['krisflyer'] = 'singapore';
+PROGRAM_NAME_MAP['virgin atlantic flying club'] = 'virgin';
 
 /**
  * Resolve the browse server connection info from .gstack/browse.json.
@@ -493,7 +503,13 @@ export async function searchPointMe(config) {
         }
       }
     }
-    return results;
+    const filtered = filterByCabin(results, config.cabin);
+    console.log(`[point.me] Loaded ${results.length} cached records, ${filtered.length} in ${config.cabin}`);
+    if (filtered.length === 0 && results.length > 0) {
+      console.warn(`[point.me] WARN: No ${config.cabin} results in cache. Returning all ${results.length} results.`);
+      return results;
+    }
+    return filtered;
   }
 
   // Verify Amex session is active before starting the sweep

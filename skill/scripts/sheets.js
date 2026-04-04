@@ -26,6 +26,10 @@ const RESULTS_COLUMNS = [
   "Airline Ret",
   "Total Points (MR)",
   "Total Fees ($)",
+  "Award Cost ($)",
+  "Cash Price ($)",
+  "Value Ratio",
+  "Verdict",
   "Score",
   "Flags",
   "Source Tag",
@@ -33,6 +37,7 @@ const RESULTS_COLUMNS = [
   "Stops Ret",
   "Summary",
   "Booking Instructions",
+  "Booking Links",
 ];
 
 const NEAR_MISS_COLUMNS = [
@@ -65,6 +70,17 @@ function csvRow(values) {
 }
 
 /**
+ * Build a point.me search URL for a one-way leg.
+ */
+function pointMeUrl(origin, dest, date, cabin, pax) {
+  const cabinMap = { economy: 'economy', premium: 'premium', business: 'business', first: 'first' };
+  const cls = cabinMap[cabin] || 'economy';
+  return `https://amex.point.me/results?departureIata=${origin}&arrivalIata=${dest}&departureDate=${date}&classOfService=${cls}&legType=oneWay&passengers=${pax}`;
+}
+
+const AMEX_TRANSFER_URL = 'https://global.americanexpress.com/rewards/transfer';
+
+/**
  * Build booking instructions for a combo.
  */
 function bookingInstructions(combo) {
@@ -72,23 +88,32 @@ function bookingInstructions(combo) {
   const progRet = combo.return.program;
   const steps = [];
 
-  if (combo.source_tag === "Both" || combo.source_tag === "Verified") {
-    steps.push("Book via point.me booking link (real-time availability confirmed).");
-  } else {
-    steps.push(`Transfer MR to ${PROGRAMS[progOut]?.name ?? progOut} for outbound.`);
-    if (progOut !== progRet) {
-      steps.push(`Transfer MR to ${PROGRAMS[progRet]?.name ?? progRet} for return.`);
-    }
-    steps.push("Book directly on airline site.");
+  steps.push(`1) Transfer MR to ${PROGRAMS[progOut]?.name ?? progOut} for outbound.`);
+  if (progOut !== progRet) {
+    steps.push(`2) Transfer MR to ${PROGRAMS[progRet]?.name ?? progRet} for return.`);
   }
+  steps.push(`Book on airline site or via point.me booking button.`);
 
   return steps.join(" ");
 }
 
 /**
+ * Build booking links for a combo.
+ */
+function bookingLinks(combo, pax, cabin) {
+  const out = combo.outbound;
+  const ret = combo.return;
+  const links = [];
+  links.push(`Outbound: ${pointMeUrl(out.origin, out.destination, out.date, cabin, pax)}`);
+  links.push(`Return: ${pointMeUrl(ret.origin, ret.destination, ret.date, cabin, pax)}`);
+  links.push(`Transfer MR: ${AMEX_TRANSFER_URL}`);
+  return links.join(' | ');
+}
+
+/**
  * Format scored combos into CSV rows.
  */
-function formatResultRows(combos, startRank) {
+function formatResultRows(combos, startRank, config) {
   return combos.map((combo, i) => {
     const rank = startRank + i;
     return csvRow([
@@ -103,6 +128,10 @@ function formatResultRows(combos, startRank) {
       combo.return.airline ?? "",
       combo.total_pts,
       combo.total_fees.toFixed(2),
+      combo.award_cost_usd != null ? combo.award_cost_usd.toFixed(2) : "",
+      combo.cash_price_usd != null ? combo.cash_price_usd : "",
+      combo.value_ratio != null ? combo.value_ratio + "x" : "",
+      combo.verdict ?? "",
       combo.score,
       (combo.flags ?? []).join("; "),
       combo.source_tag ?? "",
@@ -110,6 +139,7 @@ function formatResultRows(combos, startRank) {
       combo.return.stops ?? 0,
       combo.summary ?? "",
       bookingInstructions(combo),
+      bookingLinks(combo, config.pax, config.cabin),
     ]);
   });
 }
@@ -138,13 +168,13 @@ export function writeToSheet(results, nearMisses, config) {
   if (confirmed.length > 0) {
     lines.push("");
     lines.push("CONFIRMED AVAILABLE");
-    lines.push(...formatResultRows(confirmed, 1));
+    lines.push(...formatResultRows(confirmed, 1, config));
   }
 
   if (likely.length > 0) {
     lines.push("");
     lines.push("LIKELY AVAILABLE (seats unverified)");
-    lines.push(...formatResultRows(likely, confirmed.length + 1));
+    lines.push(...formatResultRows(likely, confirmed.length + 1, config));
   }
 
   const resultsPath = join("output", `results-${ts}.csv`);
