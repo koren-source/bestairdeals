@@ -6,7 +6,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { MR_VALUE_USD_USD } from './programs.js';
+import { MR_VALUE_USD } from './programs.js';
 
 export function getBrowseServer() {
   const candidates = [
