@@ -42,8 +42,6 @@ async function main() {
     }
 
     // 2. Run search
-    // TODO: Import and call the actual search function once seats-aero.js and pointme.js are built.
-    // For now, this is a placeholder that expects search.js to export a runSearch function.
     let outbound = [];
     let returns = [];
     let totalRecords = 0;

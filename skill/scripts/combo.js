@@ -50,6 +50,14 @@ export function buildCombos(outbound, returns, config) {
       const total_pts = (out.mr_cost + ret.mr_cost) * config.pax;
       const total_fees = (out.fees_usd + ret.fees_usd) * config.pax;
 
+      // Derive source_tag from outbound and return records
+      let source_tag = out.source_tag || null;
+      if (out.source_tag && ret.source_tag) {
+        source_tag = (out.source_tag === 'Both' || ret.source_tag === 'Both' || out.source_tag !== ret.source_tag)
+          ? 'Both'
+          : out.source_tag;
+      }
+
       combos.push({
         outbound: out,
         return: ret,
@@ -57,6 +65,7 @@ export function buildCombos(outbound, returns, config) {
         total_pts,
         total_fees,
         confirmed,
+        source_tag,
       });
     }
   }

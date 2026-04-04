@@ -19,6 +19,8 @@ import { writeHistory } from './history.js';
 import { detectBonuses } from './bonus-detect.js';
 import { notify, buildNotifyMessage } from './notify.js';
 import { addCashPrices } from './cash-price.js';
+import { writeReport } from './report.js';
+import { writeWebData } from './web-export.js';
 
 const VALID_CABINS = ['economy', 'premium', 'business', 'first'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -92,48 +94,60 @@ function loadConfig() {
   return config;
 }
 
-async function main() {
-  const startTime = Date.now();
-
+/**
+ * Run the full search pipeline.
+ *
+ * When called from cron.js, config and programs are passed in.
+ * When called standalone (main), they are loaded internally.
+ *
+ * @param {object} [extConfig] - pre-loaded config (optional, loads trip.json if omitted)
+ * @param {object} [extPrograms] - programs with bonuses already applied (optional)
+ * @returns {{ scored, nearMisses, config, localPrograms, filePaths, outbound, returns, totalRecords }}
+ */
+export async function runSearch(extConfig, extPrograms) {
   // 1. Load and validate config
-  console.log('[search] Loading trip.json...');
-  const config = loadConfig();
+  const config = extConfig ?? loadConfig();
   console.log(`[search] Trip: ${config.origin} -> ${config.destinations.join(', ')} | ${config.cabin} | ${config.pax} pax`);
   console.log(`[search] Outbound: ${config.outbound.start} to ${config.outbound.end}`);
   console.log(`[search] Return:   ${config.return.start} to ${config.return.end}`);
   console.log(`[search] Stay:     ${config.trip_length.min}-${config.trip_length.max} days`);
 
   // 2. Detect transfer bonuses (runs before Promise.all — shares browser with pointme.js)
-  console.log('\n[search] Checking for Amex transfer bonuses...');
-  let localPrograms = { ...PROGRAMS };
-  // Deep copy bonus_ratio so we never mutate the original
-  for (const key of Object.keys(localPrograms)) {
-    localPrograms[key] = { ...localPrograms[key] };
-  }
-
-  try {
-    const bonuses = await detectBonuses();
-
-    if (bonuses && bonuses.length > 0) {
-      for (const bonus of bonuses) {
-        // Validate: ratio between 1.0 and 2.0, program exists
-        if (!localPrograms[bonus.program]) {
-          console.warn(`[search] WARN: Bonus for unknown program "${bonus.program}" — skipping`);
-          continue;
-        }
-        if (typeof bonus.bonus_ratio !== 'number' || bonus.bonus_ratio < 1.0 || bonus.bonus_ratio > 2.0) {
-          console.warn(`[search] WARN: Invalid bonus ratio ${bonus.bonus_ratio} for ${bonus.program} — skipping`);
-          continue;
-        }
-
-        localPrograms[bonus.program].bonus_ratio = bonus.bonus_ratio;
-        console.log(`[search] Applied bonus: ${bonus.program} ${bonus.bonus_ratio}x from ${bonus.source_url || 'unknown source'}`);
-      }
-    } else {
-      console.log('[search] No active transfer bonuses detected');
+  let localPrograms;
+  if (extPrograms) {
+    localPrograms = extPrograms;
+  } else {
+    console.log('\n[search] Checking for Amex transfer bonuses...');
+    localPrograms = { ...PROGRAMS };
+    // Deep copy bonus_ratio so we never mutate the original
+    for (const key of Object.keys(localPrograms)) {
+      localPrograms[key] = { ...localPrograms[key] };
     }
-  } catch (err) {
-    console.warn(`[search] WARN: Bonus detection failed: ${err.message} — continuing without bonuses`);
+
+    try {
+      const bonuses = await detectBonuses();
+
+      if (bonuses && bonuses.length > 0) {
+        for (const bonus of bonuses) {
+          // Validate: ratio between 1.0 and 2.0, program exists
+          if (!localPrograms[bonus.program]) {
+            console.warn(`[search] WARN: Bonus for unknown program "${bonus.program}" — skipping`);
+            continue;
+          }
+          if (typeof bonus.bonus_ratio !== 'number' || bonus.bonus_ratio < 1.0 || bonus.bonus_ratio > 2.0) {
+            console.warn(`[search] WARN: Invalid bonus ratio ${bonus.bonus_ratio} for ${bonus.program} — skipping`);
+            continue;
+          }
+
+          localPrograms[bonus.program].bonus_ratio = bonus.bonus_ratio;
+          console.log(`[search] Applied bonus: ${bonus.program} ${bonus.bonus_ratio}x from ${bonus.source_url || 'unknown source'}`);
+        }
+      } else {
+        console.log('[search] No active transfer bonuses detected');
+      }
+    } catch (err) {
+      console.warn(`[search] WARN: Bonus detection failed: ${err.message} — continuing without bonuses`);
+    }
   }
 
   // 3. Run both agents in parallel
@@ -183,16 +197,21 @@ async function main() {
   const scored = combos.map((c) => scoreCombo(c, config));
   scored.sort((a, b) => a.score - b.score);
 
-  // 9. Split into confirmed and likely tiers
+  // 9. Set summary on each scored combo
+  scored.forEach((c, i) => {
+    c.summary = buildSummary(c, i + 1, scored.length, localPrograms);
+  });
+
+  // 10. Split into confirmed and likely tiers
   const confirmed = scored.filter((c) => c.confirmed);
   const likely = scored.filter((c) => !c.confirmed);
   console.log(`[search] Confirmed: ${confirmed.length} | Likely: ${likely.length}`);
 
-  // 10. Build near-misses
+  // 11. Build near-misses
   const nearMisses = buildNearMisses(outbound, returns, config, scored);
   console.log(`[search] Near-misses: ${nearMisses.length}`);
 
-  // 11. Cash price comparison for top 3
+  // 12. Cash price comparison for top 3
   console.log('\n[search] Looking up cash prices for top 3 deals...');
   let topWithCash = [];
   try {
@@ -213,17 +232,16 @@ async function main() {
     console.warn(`[search] WARN: Cash price lookup failed: ${err.message}`);
   }
 
-  // 12. Build summaries for top results
+  // 13. Log top 5 deals
   if (scored.length > 0) {
     console.log('\n[search] Top 5 deals:');
     const top5 = scored.slice(0, 5);
     for (let i = 0; i < top5.length; i++) {
-      const summary = buildSummary(top5[i], i + 1, scored.length, localPrograms);
-      console.log(`  ${summary}`);
+      console.log(`  ${top5[i].summary}`);
     }
   }
 
-  // 12. Merge cash prices into scored results
+  // 14. Merge cash prices into scored results
   if (topWithCash.length > 0) {
     for (let i = 0; i < topWithCash.length && i < scored.length; i++) {
       scored[i].award_cost_usd = topWithCash[i].award_cost_usd;
@@ -233,7 +251,7 @@ async function main() {
     }
   }
 
-  // 13. Write to sheet (CSV fallback)
+  // 15. Write to sheet (CSV fallback)
   console.log('\n[search] Writing results...');
   let filePaths;
   try {
@@ -249,7 +267,24 @@ async function main() {
     console.error(`[search] ERROR: Failed to write results: ${err.message}`);
   }
 
-  // 13. Write history
+  // 16. Generate HTML report
+  try {
+    const reportPath = writeReport(scored, nearMisses, config, localPrograms);
+    console.log(`[search] Report written to: ${reportPath}`);
+    filePaths.report = reportPath;
+  } catch (err) {
+    console.warn(`[search] WARN: Failed to write report: ${err.message}`);
+  }
+
+  // 17. Update web dashboard data
+  try {
+    writeWebData(scored, nearMisses, config, localPrograms);
+    console.log('[search] Web data updated (web/data.json)');
+  } catch (err) {
+    console.warn(`[search] WARN: Failed to write web data: ${err.message}`);
+  }
+
+  // 18. Write history
   try {
     writeHistory(scored, config);
     console.log('[search] History log updated');
@@ -257,7 +292,7 @@ async function main() {
     console.warn(`[search] WARN: Failed to write history: ${err.message}`);
   }
 
-  // 14. Notify
+  // 19. Notify
   try {
     const topDeal = scored[0] || null;
     const resultPath = filePaths?.results || 'output/';
@@ -267,7 +302,14 @@ async function main() {
     console.warn(`[search] WARN: Notification failed: ${err.message}`);
   }
 
-  // Done
+  return { scored, nearMisses, config, localPrograms, filePaths, outbound, returns, totalRecords };
+}
+
+async function main() {
+  const startTime = Date.now();
+  console.log('[search] Loading trip.json...');
+  const result = await runSearch();
+
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log(`\n[search] Done in ${elapsed}s`);
 }
