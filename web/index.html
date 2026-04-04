@@ -2835,7 +2835,7 @@ function wireEvents() {
 }
 
 // --- Load data and initialize ---
-fetch('data.json')
+fetch(API_URL + '/results', { headers: apiHeaders() })
   .then(function(res) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
@@ -2877,10 +2877,10 @@ fetch('data.json')
     document.getElementById('footer').innerHTML = 'bestairdeals &mdash; generated ' + DATA.timestamp;
   })
   .catch(function(err) {
-    console.error('Failed to load data.json:', err);
+    console.error('Failed to load results:', err);
     document.getElementById('loadingState').style.display = 'none';
     document.getElementById('errorState').style.display = '';
-    document.getElementById('headerStats').textContent = 'Data unavailable';
+    document.getElementById('headerStats').textContent = 'No results yet — run a search';
   });
 </script>
 </body>
