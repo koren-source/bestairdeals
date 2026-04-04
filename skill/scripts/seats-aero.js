@@ -69,6 +69,8 @@ async function fetchAvailability({ origin, destination, cabin, startDate, endDat
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
+    // 404 = no routes tracked (Seats.aero only tracks nonstop), not an error
+    if (response.status === 404) return [];
     throw new Error(`Seats.aero ${response.status}: ${body.slice(0, 200)}`);
   }
 
@@ -108,8 +110,8 @@ function mapRecord(item, direction, origin, destination, programKey, program, ca
     date: item.Date,
     program: programKey,
     airline: airlines || program.airline,
-    pts_per_person_ow: mileageCost,
-    fees_usd: parseFloat(totalTaxes) || 0,
+    pts_per_person_ow: parseInt(mileageCost, 10) || 0,
+    fees_usd: (parseFloat(totalTaxes) || 0) / 100, // API returns cents
     seats_available: remainingSeats || 0,
     stops: 0, // Seats.aero doesn't provide stops; flagged STOPS_UNKNOWN in score.js
   };

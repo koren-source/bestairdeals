@@ -272,6 +272,10 @@ function parseStops(str) {
 /**
  * Navigate to a point.me URL and parse results using gstack browse.
  *
+ * Strategy: use the `text` command to get full page text, then parse with regex.
+ * point.me renders each result as a button with a predictable text pattern:
+ *   "Air France LIVE 4:30 PM – 8:00 AM +1 Air France Business 10h 30m – 1 stop JFK CDG CDG LHR ... 189,000 points +$253.00* FlyingBlue 188,500 points ..."
+ *
  * @param {string} url - The amex.point.me results URL
  * @param {string} direction - "outbound" or "return"
  * @param {string} origin
@@ -293,164 +297,98 @@ async function navigateAndParse(url, direction, origin, destination, date, serve
     throw new Error('point.me session expired');
   }
 
-  // 4. Extract results via JavaScript evaluation
-  // point.me is a React app. Result cards contain program, points, fees, stops, booking link.
-  // We use a broad extraction strategy since the exact DOM structure may change.
-  const extractScript = `
-    (function() {
-      var results = [];
+  // 4. Get the snapshot to parse result buttons
+  let snapshot = await browseCommand(server, 'snapshot', ['-i']);
 
-      // Strategy 1: Look for result card elements
-      // point.me typically renders results as cards/rows with program info
-      var cards = document.querySelectorAll('[class*="result"], [class*="card"], [class*="offer"], [class*="flight"], [class*="option"]');
-
-      // If no cards found with common class patterns, try table rows
-      if (cards.length === 0) {
-        cards = document.querySelectorAll('table tbody tr, [role="row"], [class*="row"]');
-      }
-
-      // If still nothing, try looking for any element containing points values
-      if (cards.length === 0) {
-        // Fallback: find elements that contain comma-separated numbers (like "62,000")
-        var allElements = document.querySelectorAll('*');
-        var pointsPattern = /\\d{1,3},\\d{3}/;
-        for (var i = 0; i < allElements.length; i++) {
-          var el = allElements[i];
-          if (el.children.length > 2 && pointsPattern.test(el.textContent)) {
-            cards = el.children;
-            break;
-          }
-        }
-      }
-
-      for (var i = 0; i < cards.length; i++) {
-        var card = cards[i];
-        var text = card.textContent || '';
-
-        // Skip cards that don't look like flight results
-        if (text.length < 20) continue;
-
-        // Extract points (look for comma-separated numbers, e.g., "62,000")
-        var ptsMatch = text.match(/(\\d{1,3},\\d{3})\\s*(pts|points|miles)?/i);
-        if (!ptsMatch) continue; // Not a result card
-
-        // Extract program name (usually at the top of the card)
-        var programEl = card.querySelector('[class*="program"], [class*="partner"], [class*="loyalty"], [class*="airline-name"], [class*="provider"]');
-        var programName = programEl ? programEl.textContent.trim() : '';
-
-        // If no dedicated program element, try to extract from the card text
-        if (!programName) {
-          // Look for known program names in the text
-          var knownPrograms = ['Flying Blue', 'Virgin Atlantic', 'British Airways', 'Aeroplan',
-            'ANA', 'Singapore', 'KrisFlyer', 'Delta', 'SkyMiles', 'Etihad', 'Emirates',
-            'Cathay', 'Asia Miles', 'LifeMiles', 'Avianca', 'Hawaiian', 'JetBlue', 'Copa',
-            'Iberia', 'Avios'];
-          for (var j = 0; j < knownPrograms.length; j++) {
-            if (text.includes(knownPrograms[j])) {
-              programName = knownPrograms[j];
-              break;
-            }
-          }
-        }
-
-        // Extract fees (look for dollar amounts)
-        var feesMatch = text.match(/\\$([\\d,.]+)/);
-        var fees = feesMatch ? feesMatch[1] : '0';
-
-        // Extract stops
-        var stopsText = '';
-        var stopsEl = card.querySelector('[class*="stop"], [class*="segment"]');
-        if (stopsEl) {
-          stopsText = stopsEl.textContent;
-        } else if (text.match(/nonstop|direct|\\d+\\s*stop/i)) {
-          stopsText = text.match(/nonstop|direct|\\d+\\s*stops?/i)[0];
-        }
-
-        // Extract airline
-        var airlineEl = card.querySelector('[class*="airline"], [class*="carrier"], [class*="operator"]');
-        var airline = airlineEl ? airlineEl.textContent.trim() : '';
-
-        // Extract booking URL
-        var bookingLink = card.querySelector('a[href*="book"], a[href*="redirect"], a[class*="book"], a[class*="cta"]');
-        var bookingUrl = bookingLink ? bookingLink.href : '';
-
-        results.push({
-          programName: programName,
-          points: ptsMatch[1],
-          fees: fees,
-          stops: stopsText,
-          airline: airline,
-          bookingUrl: bookingUrl,
-          rawText: text.substring(0, 200)
-        });
-      }
-
-      return JSON.stringify({ count: results.length, results: results, url: window.location.href });
-    })()
-  `.trim();
-
-  let raw = await browseCommand(server, 'js', [extractScript]);
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    // Sometimes the js command wraps output in quotes or adds extra text
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      parsed = JSON.parse(jsonMatch[0]);
-    } else {
-      console.warn(`[point.me] WARN: Could not parse JS result for ${date} ${origin}->${destination}`);
-      return [];
-    }
-  }
-
-  // 5. Handle blank results
-  if (!parsed.results || parsed.results.length === 0) {
-    // Scroll down and wait
-    console.log(`[point.me] No results on first try, scrolling and retrying...`);
-    await browseCommand(server, 'scroll', ['down', '500']);
+  // 5. Handle blank results (no result buttons found)
+  if (!snapshot.includes('points')) {
+    console.log(`[point.me] No results on first try, waiting 5 more seconds...`);
     await sleep(5000);
+    snapshot = await browseCommand(server, 'snapshot', ['-i']);
 
-    raw = await browseCommand(server, 'js', [extractScript]);
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { results: [] };
-    }
-
-    if (!parsed.results || parsed.results.length === 0) {
+    if (!snapshot.includes('points')) {
       // Re-navigate once
       console.log(`[point.me] Still blank, re-navigating...`);
       await browseCommand(server, 'goto', [url]);
       await sleep(8000);
+      snapshot = await browseCommand(server, 'snapshot', ['-i']);
 
-      raw = await browseCommand(server, 'js', [extractScript]);
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        const jsonMatch = raw.match(/\{[\s\S]*\}/);
-        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { results: [] };
-      }
-
-      if (!parsed.results || parsed.results.length === 0) {
+      if (!snapshot.includes('points')) {
         console.warn(`[point.me] WARN: No results after retry for ${date} ${origin}->${destination}`);
         return [];
       }
     }
   }
 
-  // 6. Map raw results to our record schema
+  // 6. Parse results from snapshot
+  // Each result is a button line like:
+  //   @e17 [button] "Air France LIVE 4:30 PM – 8:00 AM +1 Air France Business 10h 30m – 1 stop ... 189,000 points +$253.00* FlyingBlue 188,500 points ..."
   const records = [];
-  for (const r of parsed.results) {
-    const programKey = resolveProgram(r.programName);
-    if (!programKey) {
-      console.warn(`[point.me] WARN: Unknown program "${r.programName}" — skipping (raw: ${r.rawText?.slice(0, 60)})`);
-      continue;
+  const buttonLines = snapshot.split('\n').filter(
+    (line) => line.includes('[button]') && line.includes('points')
+  );
+
+  for (const line of buttonLines) {
+    // Extract the quoted text content
+    const textMatch = line.match(/"(.+)"/);
+    if (!textMatch) continue;
+    const text = textMatch[1];
+
+    // Skip non-result buttons (sort buttons like "Fewest points")
+    if (text.length < 50) continue;
+    if (text.startsWith('point.me') || text.startsWith('Fewest') || text.startsWith('Quickest')) continue;
+
+    // Extract airline name (first word(s) before "LIVE" or time)
+    const airlineMatch = text.match(/^(.+?)\s+LIVE\s/);
+    const airline = airlineMatch ? airlineMatch[1].trim() : '';
+
+    // Extract cabin class
+    const cabinMatch = text.match(/\b(Economy|Premium|Business|First)\b/i);
+    const cabin = cabinMatch ? cabinMatch[1] : '';
+
+    // Extract stops
+    const stopsMatch = text.match(/(\d+)\s+stop|Nonstop|Direct/i);
+    const stops = stopsMatch
+      ? (stopsMatch[0].toLowerCase().includes('nonstop') || stopsMatch[0].toLowerCase().includes('direct') ? 0 : parseInt(stopsMatch[1], 10))
+      : 0;
+
+    // Extract all "NNN,NNN points" occurrences — first one is typically the Amex MR cost
+    const pointsMatches = [...text.matchAll(/([\d,]+)\s+points/gi)];
+    if (pointsMatches.length === 0) continue;
+
+    // The first points value is the primary cost
+    const primaryPts = parsePoints(pointsMatches[0][1]);
+    if (!primaryPts) continue;
+
+    // Extract fees: "+$253.00*" or "+$6.00"
+    const feesMatch = text.match(/\+\$([0-9,.]+)/);
+    const fees = feesMatch ? parseFees(feesMatch[1]) : 0;
+
+    // Extract loyalty program name — appears right after "NNN,NNN points +$X.XX*"
+    // Pattern: "189,000 points +$253.00* FlyingBlue 188,500 points"
+    // The program name is between the first "points +$X*" and the second points value
+    let programName = '';
+
+    // Try to find program name after fees
+    const afterFeesMatch = text.match(/\+\$[\d,.]+\*?\s+(.+?)\s+[\d,]+\s+points/);
+    if (afterFeesMatch) {
+      programName = afterFeesMatch[1].trim();
     }
 
-    const pts = parsePoints(r.points);
-    if (!pts) continue;
+    // Also try: program name might appear after "Check program" text
+    if (!programName) {
+      const checkMatch = text.match(/Check program\s+(.+?)\s+[\d,]+\s+points/);
+      if (checkMatch) programName = checkMatch[1].trim();
+    }
+
+    // If still no program name, use airline name as fallback
+    if (!programName) programName = airline;
+
+    const programKey = resolveProgram(programName) || resolveProgram(airline);
+    if (!programKey) {
+      console.warn(`[point.me] WARN: Unknown program "${programName}" (airline: "${airline}") — skipping`);
+      continue;
+    }
 
     records.push({
       source: 'point_me',
@@ -459,17 +397,34 @@ async function navigateAndParse(url, direction, origin, destination, date, serve
       destination,
       date,
       program: programKey,
-      airline: r.airline || PROGRAMS[programKey]?.airline || '',
-      pts_per_person_ow: pts,
-      fees_usd: parseFees(r.fees),
+      airline: airline || PROGRAMS[programKey]?.airline || '',
+      pts_per_person_ow: primaryPts,
+      fees_usd: fees,
       seats_available: null, // point.me doesn't provide seat counts
-      stops: parseStops(r.stops),
-      booking_url: r.bookingUrl || '',
+      stops,
+      booking_url: '', // TODO: extract from expanded card view
+      cabin: cabin.toLowerCase(),
     });
   }
 
-  console.log(`[point.me] ${date} ${origin}->${destination}: ${records.length} results from ${parsed.results.length} cards`);
+  console.log(`[point.me] ${date} ${origin}->${destination}: ${records.length} results from ${buttonLines.length} cards`);
   return records;
+}
+
+/**
+ * Filter records to only include the requested cabin class.
+ * point.me shows all cabins regardless of URL param.
+ */
+function filterByCabin(records, cabin) {
+  if (!cabin) return records;
+  const target = cabin.toLowerCase();
+  // "economy" matches "economy", "premium" matches "premium economy" or "premium"
+  return records.filter((r) => {
+    if (!r.cabin) return true; // Keep records without cabin info
+    if (target === 'economy') return r.cabin === 'economy';
+    if (target === 'premium') return r.cabin === 'premium' || r.cabin === 'premium economy';
+    return r.cabin === target;
+  });
 }
 
 /**
@@ -567,7 +522,7 @@ export async function searchPointMe(config) {
     console.log(`[point.me] (${searchCount}/${pending.length}) ${search.direction} ${search.origin}->${search.destination} ${search.date}`);
 
     try {
-      const records = await navigateAndParse(
+      const rawRecords = await navigateAndParse(
         url,
         search.direction,
         search.origin,
@@ -575,6 +530,14 @@ export async function searchPointMe(config) {
         search.date,
         server
       );
+      // Cache all results (including wrong cabin) for resumability.
+      // Cabin filtering happens later so we don't lose data.
+      const records = rawRecords;
+      const cabinMatches = filterByCabin(rawRecords, config.cabin);
+      if (rawRecords.length > 0 && cabinMatches.length === 0) {
+        const cabins = [...new Set(rawRecords.map((r) => r.cabin).filter(Boolean))];
+        console.log(`[point.me] NOTE: ${search.date} ${search.origin}->${search.destination}: ${rawRecords.length} results but none in ${config.cabin} (found: ${cabins.join(', ')})`);
+      }
 
       if (records.length > 0) {
         results.push(...records);
@@ -624,6 +587,12 @@ export async function searchPointMe(config) {
     }
   }
 
-  console.log(`[point.me] Sweep complete: ${results.length} total records`);
-  return results;
+  // Filter to requested cabin at the end
+  const filtered = filterByCabin(results, config.cabin);
+  console.log(`[point.me] Sweep complete: ${results.length} total records, ${filtered.length} in ${config.cabin}`);
+  if (filtered.length === 0 && results.length > 0) {
+    console.warn(`[point.me] WARN: No ${config.cabin} results found. Returning all ${results.length} results (mixed cabin) so combo math can still run.`);
+    return results;
+  }
+  return filtered;
 }
