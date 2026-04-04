@@ -1256,6 +1256,30 @@ var filterTier = 'all';
 var filterStops = 'any';
 var filterAirport = 'all';
 
+// --- Wire up sort/filter buttons ---
+document.getElementById('filterBar').addEventListener('click', function(e) {
+  var btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+
+  var group = btn.closest('.filter-group');
+  if (btn.dataset.sort) {
+    currentSort = btn.dataset.sort;
+  } else if (btn.dataset.tier) {
+    filterTier = btn.dataset.tier;
+  } else if (btn.dataset.stops) {
+    filterStops = btn.dataset.stops;
+  } else if (btn.dataset.airport) {
+    filterAirport = btn.dataset.airport;
+  } else {
+    return;
+  }
+
+  group.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+
+  if (DATA) renderTable();
+});
+
 // --- Render top 3 cards ---
 function renderTopDeals() {
   var top3 = DATA.scored.slice(0, 3);
