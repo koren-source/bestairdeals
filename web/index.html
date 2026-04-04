@@ -522,6 +522,7 @@
             <th data-col="value">Value</th>
             <th data-col="verdict">Verdict</th>
             <th data-col="stops">Stops</th>
+            <th data-col="source">Source</th>
           </tr>
         </thead>
         <tbody id="resultsBody">
@@ -591,6 +592,13 @@ function verdictBadge(v) {
   if (!v) return '';
   var c = verdictColor(v);
   return '<span class="verdict-badge" style="background:' + c + '20;color:' + c + ';border:1px solid ' + c + '40">' + verdictLabel(v) + '</span>';
+}
+
+function sourceBadge(tag) {
+  if (!tag) return '<span style="color:#6B7280">—</span>';
+  var colors = { Both: '#10B981', Verified: '#3B82F6', API: '#F59E0B', PARTIAL: '#EF4444' };
+  var c = colors[tag] || '#6B7280';
+  return '<span style="background:' + c + '20;color:' + c + ';border:1px solid ' + c + '40;padding:2px 6px;border-radius:4px;font-size:11px">' + tag + '</span>';
 }
 
 function pointMeUrl(origin, dest, date, cabin, pax) {
@@ -771,16 +779,17 @@ function renderTable() {
       + '<td>' + (c.value_ratio != null ? c.value_ratio + 'x' : '') + '</td>'
       + '<td>' + verdictBadge(c.verdict) + '</td>'
       + '<td>' + stops + '</td>'
+      + '<td>' + sourceBadge(c.source_tag) + '</td>'
       + '</tr>';
   }
 
   if (filterTier !== 'likely' && confirmed.length > 0) {
-    html += '<tr class="section-header-row"><td colspan="14">CONFIRMED AVAILABLE (' + confirmed.length + ')</td></tr>';
+    html += '<tr class="section-header-row"><td colspan="15">CONFIRMED AVAILABLE (' + confirmed.length + ')</td></tr>';
     confirmed.forEach(function(c) { html += renderRow(c); });
   }
 
   if (filterTier !== 'confirmed' && likely.length > 0) {
-    html += '<tr class="section-header-row"><td colspan="14">LIKELY AVAILABLE (' + likely.length + ')</td></tr>';
+    html += '<tr class="section-header-row"><td colspan="15">LIKELY AVAILABLE (' + likely.length + ')</td></tr>';
     likely.forEach(function(c) { html += renderRow(c); });
   }
 

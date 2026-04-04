@@ -59,6 +59,7 @@ export function writeWebData(scored, nearMisses, config, programs) {
       total_fees: c.total_fees,
       score: c.score,
       flags: c.flags || [],
+      source_tag: c.source_tag || null,
       award_cost_usd: c.award_cost_usd ?? +((c.total_pts * MR_VALUE_USD + c.total_fees).toFixed(2)),
       cash_price_usd: c.cash_price_usd ?? null,
       value_ratio: c.value_ratio ?? null,
