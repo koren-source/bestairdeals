@@ -74,6 +74,41 @@ export function buildCombos(outbound, returns, config) {
 }
 
 /**
+ * Build one-way "combos" (outbound only, no pairing).
+ * @param {object[]} outbound - outbound records
+ * @param {object} config - trip config (pax)
+ * @returns {object[]} combo objects with null return
+ */
+export function buildOneWayCombos(outbound, config) {
+  const combos = [];
+
+  for (const out of outbound) {
+    if (out.mr_cost == null || out.fees_usd == null) {
+      console.warn(`Skipping outbound record with null mr_cost or fees_usd: ${out.date} ${out.program}`);
+      continue;
+    }
+
+    const outSeatsOk = out.seats_available === null || out.seats_available >= config.pax;
+    if (!outSeatsOk) continue;
+
+    const total_pts = out.mr_cost * config.pax;
+    const total_fees = out.fees_usd * config.pax;
+
+    combos.push({
+      outbound: out,
+      return: null,
+      stay_days: null,
+      total_pts,
+      total_fees,
+      confirmed: out.seats_available !== null,
+      source_tag: out.source_tag || null,
+    });
+  }
+
+  return combos;
+}
+
+/**
  * Build near-miss combos that almost qualified.
  * Date near-miss: stay_days within 1 day of min/max but outside range.
  * Seat near-miss: seats < pax but >= 1 on either leg.

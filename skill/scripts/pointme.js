@@ -422,9 +422,10 @@ export async function searchPointMe(config, options = {}) {
   const server = getBrowseServer();
   console.log(`[point.me] Connected to browse server on port ${server.port}`);
 
-  // Build search plan: outbound dates + return dates
+  // Build search plan: outbound dates + return dates (skip return for one-way)
+  const isOneWay = config.tripType === 'oneway';
   const outboundDates = generateDateRange(config.outbound.start, config.outbound.end);
-  const returnDates = generateDateRange(config.return.start, config.return.end);
+  const returnDates = isOneWay ? [] : generateDateRange(config.return.start, config.return.end);
 
   const searches = [];
 

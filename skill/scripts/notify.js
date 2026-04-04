@@ -59,8 +59,12 @@ export function buildNotifyMessage(confirmed, likely, totalRecords, topDeal, fil
 
   if (topDeal) {
     const progOut = programs[topDeal.outbound.program]?.name ?? topDeal.outbound.program;
-    const progRet = programs[topDeal.return.program]?.name ?? topDeal.return.program;
-    msg += `\nTop deal: ${progOut} + ${progRet}, ${topDeal.outbound.date} - ${topDeal.return.date}, ${topDeal.total_pts} MR + $${topDeal.total_fees} for ${topDeal.outbound.seats_available ?? "?"} pax.`;
+    if (topDeal.return) {
+      const progRet = programs[topDeal.return.program]?.name ?? topDeal.return.program;
+      msg += `\nTop deal: ${progOut} + ${progRet}, ${topDeal.outbound.date} - ${topDeal.return.date}, ${topDeal.total_pts} MR + $${topDeal.total_fees} for ${topDeal.outbound.seats_available ?? "?"} pax.`;
+    } else {
+      msg += `\nTop deal: ${progOut}, ${topDeal.outbound.date} (one-way), ${topDeal.total_pts} MR + $${topDeal.total_fees} for ${topDeal.outbound.seats_available ?? "?"} pax.`;
+    }
   }
 
   msg += `\nFull results: ${filePath}`;

@@ -19,7 +19,7 @@ import { readFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { startBrowseDaemon, waitForBrowseServer, stopBrowseDaemon } from './browse-daemon.js';
 import { validateSearchParams } from './config.js';
-import { getBrowseServer } from './cash-price.js';
+import { getBrowseServer, addCashPrices } from './cash-price.js';
 import { PROGRAMS } from './programs.js';
 import { detectBonuses } from './bonus-detect.js';
 import { runSearchStreaming, writeOutputs } from './search.js';
@@ -195,7 +195,7 @@ app.post('/search', async (c) => {
           score: scored[0].score,
           total_pts: scored[0].total_pts,
           total_fees: scored[0].total_fees,
-          programs: `${scored[0].outbound.program}+${scored[0].return.program}`,
+          programs: scored[0].return ? `${scored[0].outbound.program}+${scored[0].return.program}` : scored[0].outbound.program,
         } : null,
       });
 
@@ -239,6 +239,32 @@ app.get('/status', (c) => {
 app.get('/history', (c) => {
   const limit = Math.min(parseInt(c.req.query('limit') || '10', 10), 50);
   return c.json(readHistory(limit));
+});
+
+// ─── POST /cash-prices ─────────────────────────────────────────────────
+
+app.post('/cash-prices', async (c) => {
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const { combos, config } = body;
+  if (!combos || !Array.isArray(combos) || combos.length === 0) {
+    return c.json({ error: 'combos array required' }, 400);
+  }
+  if (!config) {
+    return c.json({ error: 'config required' }, 400);
+  }
+
+  try {
+    const results = await addCashPrices(combos, config, Math.min(combos.length, 3));
+    return c.json({ results });
+  } catch (err) {
+    return c.json({ error: 'Cash price lookup failed: ' + err.message }, 500);
+  }
 });
 
 // ─── Search History Helpers ─────────────────────────────────────────────

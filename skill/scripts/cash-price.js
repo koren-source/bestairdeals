@@ -102,19 +102,25 @@ export async function addCashPrices(scoredCombos, config, topN = 3) {
     const combo = top[i];
     const out = combo.outbound;
     const ret = combo.return;
+    const isOneWay = !ret;
     const award_cost_usd = +(combo.total_pts * MR_VALUE_USD + combo.total_fees).toFixed(2);
 
-    console.log(`[cash-price] (${i + 1}/${topN}) Looking up ${out.origin}->${out.destination} ${out.date} / ${ret.origin}->${ret.destination} ${ret.date}`);
+    if (isOneWay) {
+      console.log(`[cash-price] (${i + 1}/${topN}) Looking up ${out.origin}->${out.destination} ${out.date} (one-way)`);
+    } else {
+      console.log(`[cash-price] (${i + 1}/${topN}) Looking up ${out.origin}->${out.destination} ${out.date} / ${ret.origin}->${ret.destination} ${ret.date}`);
+    }
 
     try {
       // Use outbound origin→dest for the Google Flights search
+      const returnDate = isOneWay ? null : ret.date;
       const cashPrice = await lookupCashPrice(
-        server, out.origin, out.destination, out.date, ret.date, config.pax, config.cabin
+        server, out.origin, out.destination, out.date, returnDate, config.pax, config.cabin
       );
 
       // If return is from a different airport, also check that route
       let returnCashPrice = null;
-      if (out.destination !== ret.origin) {
+      if (!isOneWay && out.destination !== ret.origin) {
         console.log(`[cash-price]   Cross-airport: also checking ${ret.origin}->${ret.destination}`);
         returnCashPrice = await lookupCashPrice(
           server, out.origin, ret.origin, out.date, ret.date, config.pax, config.cabin

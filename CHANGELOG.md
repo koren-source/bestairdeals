@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2.0] - 2026-04-04
+
+### Fixed
+- One-way trip search now works end-to-end: backend config validation, Seats.aero agent, point.me agent, combo math, scoring, and all output renderers (web dashboard, report, sheets, history, notifications) all handle one-way trips where return leg is null
+- Flex mode no longer requires trip_length for one-way searches
+
 ## [0.2.1.0] - 2026-04-04
 
 ### Added

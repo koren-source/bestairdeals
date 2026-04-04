@@ -101,8 +101,9 @@ export function writeReport(scored, nearMisses, config, programs) {
       cabin: config.cabin,
       pax: config.pax,
       outbound: config.outbound,
-      return: config.return,
-      trip_length: config.trip_length,
+      return: config.return || null,
+      tripType: config.tripType || 'roundtrip',
+      trip_length: config.trip_length || null,
     },
     programs: Object.fromEntries(
       Object.entries(programs).map(([k, v]) => [k, { name: v.name }])
@@ -115,12 +116,13 @@ export function writeReport(scored, nearMisses, config, programs) {
   // Build top 3 cards HTML
   const top3Cards = top3
     .map((combo, i) => {
+      const isOneWay = !combo.return;
       const progOut =
         programs[combo.outbound.program]?.name ?? combo.outbound.program;
-      const progRet =
-        programs[combo.return.program]?.name ?? combo.return.program;
+      const progRet = isOneWay ? '' :
+        (programs[combo.return.program]?.name ?? combo.return.program);
       const totalStops =
-        (combo.outbound.stops ?? 0) + (combo.return.stops ?? 0);
+        (combo.outbound.stops ?? 0) + (isOneWay ? 0 : (combo.return.stops ?? 0));
       const nonstop = totalStops === 0;
 
       const verdictColor = getVerdictColor(combo.verdict);
@@ -135,13 +137,39 @@ export function writeReport(scored, nearMisses, config, programs) {
         config.cabin,
         config.pax
       );
-      const retUrl = pointMeUrl(
-        combo.return.origin,
-        combo.return.destination,
-        combo.return.date,
-        config.cabin,
-        config.pax
-      );
+
+      const routeHtml = isOneWay
+        ? `${combo.outbound.origin} &rarr; ${combo.outbound.destination}`
+        : `${combo.outbound.origin} &rarr; ${combo.outbound.destination} &rarr; ${combo.return.destination}`;
+
+      const datesHtml = isOneWay
+        ? combo.outbound.date
+        : `${combo.outbound.date} &rarr; ${combo.return.date}`;
+
+      const metaHtml = isOneWay
+        ? `<span>${totalStops} stop${totalStops !== 1 ? "s" : ""}</span>
+           ${nonstop ? '<span class="nonstop-badge">NONSTOP</span>' : ""}`
+        : `<span>${combo.stay_days} days</span>
+           <span class="meta-sep">&middot;</span>
+           <span>${totalStops} stop${totalStops !== 1 ? "s" : ""}</span>
+           ${nonstop ? '<span class="nonstop-badge">NONSTOP</span>' : ""}`;
+
+      const programsHtml = isOneWay
+        ? `<span>${progOut}</span>`
+        : `<span>Out: ${progOut}</span><span>Ret: ${progRet}</span>`;
+
+      let actionsHtml = `<a class="btn btn-blue" href="${outUrl}" target="_blank" rel="noopener">Book ${combo.outbound.origin}&rarr;${combo.outbound.destination}</a>`;
+      if (!isOneWay) {
+        const retUrl = pointMeUrl(
+          combo.return.origin,
+          combo.return.destination,
+          combo.return.date,
+          config.cabin,
+          config.pax
+        );
+        actionsHtml += `<a class="btn btn-blue" href="${retUrl}" target="_blank" rel="noopener">Book ${combo.return.origin}&rarr;${combo.return.destination}</a>`;
+      }
+      actionsHtml += `<a class="btn btn-green" href="${AMEX_TRANSFER_URL}" target="_blank" rel="noopener">Transfer MR</a>`;
 
       return `
       <div class="deal-card">
@@ -149,16 +177,12 @@ export function writeReport(scored, nearMisses, config, programs) {
           <span class="deal-rank">#${i + 1}</span>
           ${verdictBadge}
         </div>
-        <div class="deal-route">${combo.outbound.origin} &rarr; ${combo.outbound.destination} &rarr; ${combo.return.destination}</div>
+        <div class="deal-route">${routeHtml}</div>
         <div class="deal-meta">
-          <span>${combo.stay_days} days</span>
-          <span class="meta-sep">&middot;</span>
-          <span>${totalStops} stop${totalStops !== 1 ? "s" : ""}</span>
-          ${nonstop ? '<span class="nonstop-badge">NONSTOP</span>' : ""}
+          ${metaHtml}
         </div>
         <div class="deal-programs">
-          <span>Out: ${progOut}</span>
-          <span>Ret: ${progRet}</span>
+          ${programsHtml}
         </div>
         <div class="deal-numbers">
           <div class="deal-number-block">
@@ -181,12 +205,10 @@ export function writeReport(scored, nearMisses, config, programs) {
           </div>
         </div>
         <div class="deal-dates">
-          <span>${combo.outbound.date} &rarr; ${combo.return.date}</span>
+          <span>${datesHtml}</span>
         </div>
         <div class="deal-actions">
-          <a class="btn btn-blue" href="${outUrl}" target="_blank" rel="noopener">Book ${combo.outbound.origin}&rarr;${combo.outbound.destination}</a>
-          <a class="btn btn-blue" href="${retUrl}" target="_blank" rel="noopener">Book ${combo.return.origin}&rarr;${combo.return.destination}</a>
-          <a class="btn btn-green" href="${AMEX_TRANSFER_URL}" target="_blank" rel="noopener">Transfer MR</a>
+          ${actionsHtml}
         </div>
       </div>`;
     })
@@ -620,14 +642,14 @@ export function writeReport(scored, nearMisses, config, programs) {
     <span class="config-label">Outbound</span>
     <span class="config-value">${config.outbound.start} to ${config.outbound.end}</span>
   </div>
-  <div class="config-item">
+  ${config.return ? `<div class="config-item">
     <span class="config-label">Return</span>
     <span class="config-value">${config.return.start} to ${config.return.end}</span>
-  </div>
-  <div class="config-item">
+  </div>` : ''}
+  ${config.trip_length ? `<div class="config-item">
     <span class="config-label">Stay</span>
     <span class="config-value">${config.trip_length.min}-${config.trip_length.max} days</span>
-  </div>
+  </div>` : ''}
   <div class="config-item">
     <span class="config-label">Sources</span>
     <span class="config-value">${sources.length > 0 ? sources.join(", ") : "seats.aero, point.me"}</span>
@@ -792,12 +814,12 @@ function renderTable() {
     else if (currentSort === 'value') { va = a.value_ratio || 999; vb = b.value_ratio || 999; }
     else if (currentSort === 'rank') { va = a.rank; vb = b.rank; }
     else if (currentSort === 'outDate') { va = a.outbound.date; vb = b.outbound.date; }
-    else if (currentSort === 'retDate') { va = a['return'].date; vb = b['return'].date; }
-    else if (currentSort === 'days') { va = a.stay_days; vb = b.stay_days; }
+    else if (currentSort === 'retDate') { va = a['return'] ? a['return'].date : ''; vb = b['return'] ? b['return'].date : ''; }
+    else if (currentSort === 'days') { va = a.stay_days || 0; vb = b.stay_days || 0; }
     else if (currentSort === 'pts') { va = a.total_pts; vb = b.total_pts; }
     else if (currentSort === 'stops') {
-      va = (a.outbound.stops || 0) + (a['return'].stops || 0);
-      vb = (b.outbound.stops || 0) + (b['return'].stops || 0);
+      va = (a.outbound.stops || 0) + (a['return'] ? (a['return'].stops || 0) : 0);
+      vb = (b.outbound.stops || 0) + (b['return'] ? (b['return'].stops || 0) : 0);
     }
     else if (currentSort === 'awardCost') { va = a.award_cost_usd || 999999; vb = b.award_cost_usd || 999999; }
     else if (currentSort === 'cashPrice') { va = a.cash_price_usd || 999999; vb = b.cash_price_usd || 999999; }
@@ -818,7 +840,7 @@ function renderTable() {
   function isVisible(c) {
     if (filterTier === 'confirmed' && !c.confirmed) return false;
     if (filterTier === 'likely' && c.confirmed) return false;
-    var stops = (c.outbound.stops || 0) + (c['return'].stops || 0);
+    var stops = (c.outbound.stops || 0) + (c['return'] ? (c['return'].stops || 0) : 0);
     if (filterStops === '0' && stops !== 0) return false;
     if (filterStops === '1' && stops > 1) return false;
     if (filterAirport !== 'all' && c.outbound.destination !== filterAirport) return false;
@@ -828,16 +850,17 @@ function renderTable() {
   function renderRow(c) {
     var vis = isVisible(c);
     if (vis) visibleCount++;
-    var stops = (c.outbound.stops || 0) + (c['return'].stops || 0);
+    var isOW = !c['return'];
+    var stops = (c.outbound.stops || 0) + (isOW ? 0 : (c['return'].stops || 0));
     var vc = verdictColor(c.verdict);
     return '<tr class="' + (vis ? '' : 'hidden') + '" data-confirmed="' + c.confirmed + '" data-dest="' + c.outbound.destination + '" data-stops="' + stops + '">'
       + '<td>' + c.rank + '</td>'
       + '<td>' + tierBadge(c.confirmed) + '</td>'
       + '<td>' + c.outbound.date + '</td>'
-      + '<td>' + c['return'].date + '</td>'
-      + '<td>' + c.stay_days + '</td>'
+      + '<td>' + (isOW ? '\u2014' : c['return'].date) + '</td>'
+      + '<td>' + (isOW ? '\u2014' : c.stay_days) + '</td>'
       + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + progName(c.outbound.program) + '</td>'
-      + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + progName(c['return'].program) + '</td>'
+      + '<td style="font-family:system-ui,sans-serif;font-size:12px">' + (isOW ? '\u2014' : progName(c['return'].program)) + '</td>'
       + '<td>' + fmt(c.total_pts) + '</td>'
       + '<td>' + fmtUsd(c.total_fees) + '</td>'
       + '<td>' + fmtUsd(c.award_cost_usd) + '</td>'
@@ -880,6 +903,7 @@ function renderHeatmap() {
   var maxScore = -Infinity;
 
   DATA.scored.forEach(function(c) {
+    if (!c['return']) return; // skip one-way combos
     var key = c.outbound.date + '|' + c['return'].date;
     if (!lookup[key] || c.score < lookup[key]) {
       lookup[key] = c.score;
