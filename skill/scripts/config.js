@@ -33,8 +33,13 @@ export function validateConfig(config) {
     throw new Error('config: "pax" must be a number >= 1');
   }
 
+  // Normalize tripType (default to roundtrip for backward compat)
+  config.tripType = config.tripType === 'oneway' ? 'oneway' : 'roundtrip';
+  const isOneWay = config.tripType === 'oneway';
+
   // Date validation
-  for (const field of ['outbound', 'return']) {
+  const dateFields = isOneWay ? ['outbound'] : ['outbound', 'return'];
+  for (const field of dateFields) {
     const range = config[field];
     if (!range || !range.start || !range.end) {
       throw new Error(`config: "${field}" must have "start" and "end" dates`);
@@ -47,12 +52,14 @@ export function validateConfig(config) {
     }
   }
 
-  // Trip length
-  if (!config.trip_length || typeof config.trip_length.min !== 'number' || typeof config.trip_length.max !== 'number') {
-    throw new Error('config: "trip_length" must have numeric "min" and "max"');
-  }
-  if (config.trip_length.min > config.trip_length.max) {
-    throw new Error('config: "trip_length.min" must be <= "trip_length.max"');
+  // Trip length (not required for one-way)
+  if (!isOneWay) {
+    if (!config.trip_length || typeof config.trip_length.min !== 'number' || typeof config.trip_length.max !== 'number') {
+      throw new Error('config: "trip_length" must have numeric "min" and "max"');
+    }
+    if (config.trip_length.min > config.trip_length.max) {
+      throw new Error('config: "trip_length.min" must be <= "trip_length.max"');
+    }
   }
 
   // Defaults for optional scoring params
@@ -79,24 +86,27 @@ export function validateSearchParams(params) {
     throw new Error('config: "mode" must be "exact" or "flex"');
   }
 
+  const isOneWay = params.tripType === 'oneway';
+
   if (mode === 'flex') {
     if (!params.outbound?.month || !MONTH_RE.test(params.outbound.month)) {
       throw new Error('config: flex mode requires "outbound.month" in YYYY-MM format');
     }
-    if (!params.trip_length || typeof params.trip_length.min !== 'number' || typeof params.trip_length.max !== 'number') {
+    if (!isOneWay && (!params.trip_length || typeof params.trip_length.min !== 'number' || typeof params.trip_length.max !== 'number')) {
       throw new Error('config: flex mode requires "trip_length.min" and "trip_length.max"');
     }
 
     // Expand flex dates into standard date ranges
-    const expanded = expandFlexDates(params.outbound.month, params.trip_length);
+    const expanded = expandFlexDates(params.outbound.month, isOneWay ? null : params.trip_length);
     const config = {
       origin: params.origin,
       destinations: params.destinations,
       cabin: params.cabin,
       pax: params.pax,
+      tripType: params.tripType,
       outbound: expanded.outbound,
-      return: expanded.return,
-      trip_length: params.trip_length,
+      ...(!isOneWay && { return: expanded.return }),
+      ...(!isOneWay && { trip_length: params.trip_length }),
     };
     return validateConfig(config);
   }
@@ -107,9 +117,10 @@ export function validateSearchParams(params) {
     destinations: params.destinations,
     cabin: params.cabin,
     pax: params.pax,
+    tripType: params.tripType,
     outbound: params.outbound,
-    return: params.return,
-    trip_length: params.trip_length,
+    ...(!isOneWay && { return: params.return }),
+    ...(!isOneWay && { trip_length: params.trip_length }),
   };
   return validateConfig(config);
 }
@@ -132,19 +143,24 @@ export function expandFlexDates(month, tripLength) {
   const outStart = new Date(year, mon - 1, 1);
   const outEnd = new Date(year, mon, 0); // Last day of month
 
-  // Return window: outbound.start + min_days to outbound.end + max_days
-  const retStart = new Date(outStart);
-  retStart.setDate(retStart.getDate() + tripLength.min);
-
-  const retEnd = new Date(outEnd);
-  retEnd.setDate(retEnd.getDate() + tripLength.max);
-
   const fmt = (d) => d.toISOString().split('T')[0];
 
-  return {
+  const result = {
     outbound: { start: fmt(outStart), end: fmt(outEnd) },
-    return: { start: fmt(retStart), end: fmt(retEnd) },
   };
+
+  // Return window only for round trips
+  if (tripLength) {
+    const retStart = new Date(outStart);
+    retStart.setDate(retStart.getDate() + tripLength.min);
+
+    const retEnd = new Date(outEnd);
+    retEnd.setDate(retEnd.getDate() + tripLength.max);
+
+    result.return = { start: fmt(retStart), end: fmt(retEnd) };
+  }
+
+  return result;
 }
 
 /**
